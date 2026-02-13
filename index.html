@@ -1,0 +1,76 @@
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Crime Ledger</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --trm-navy: #020617;
+            --trm-teal: #06b6d4;
+            --trm-slate: #94a3b8;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--trm-navy);
+            color: var(--trm-slate);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .font-mono {
+            font-family: 'JetBrains+Mono', 'Fira Code', monospace;
+        }
+        .scanline {
+            width: 100%;
+            height: 1px;
+            z-index: 99;
+            background: rgba(34, 211, 238, 0.05);
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            animation: scanline 12s linear infinite;
+        }
+        @keyframes scanline {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+        ::-webkit-scrollbar {
+          width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+          background: #020617;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: #1e293b;
+          border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: #334155;
+        }
+        .trm-heading {
+            letter-spacing: -0.04em;
+            line-height: 1;
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
+    "express": "https://esm.sh/express@^5.2.1",
+    "cors": "https://esm.sh/cors@^2.8.6",
+    "axios": "https://esm.sh/axios@^1.13.5"
+  }
+}
+</script>
+</head>
+<body class="overflow-x-hidden antialiased">
+    <div id="root"></div>
+</body>
+</html>
