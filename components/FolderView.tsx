@@ -9,10 +9,13 @@ interface FolderViewProps {
 }
 
 export const FolderView: React.FC<FolderViewProps> = ({ cases, folders, onAction }) => {
+  // Initialize state from localStorage or default to 'VAULT'
   const [selectedFolder, setSelectedFolder] = useState<string>(() => {
-    return localStorage.getItem('osint_folder_pref') || 'VAULT';
+    const saved = localStorage.getItem('osint_folder_pref');
+    return saved || 'VAULT';
   });
 
+  // Persist selected folder whenever it changes
   useEffect(() => {
     localStorage.setItem('osint_folder_pref', selectedFolder);
   }, [selectedFolder]);
