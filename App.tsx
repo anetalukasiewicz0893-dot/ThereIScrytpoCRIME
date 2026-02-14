@@ -108,8 +108,7 @@ function App() {
   };
 
   const performAlphaHarvest = async () => {
-    const apiKeyAvailable = (typeof process !== 'undefined' && process.env?.API_KEY) || (window as any).API_KEY;
-
+  const apiKeyAvailable = import.meta.env.VITE_API_KEY
     if (!apiKeyAvailable) {
       setError("UPLINK FAILURE: Missing Gemini API Key. Verify environment secrets.");
       addLog("CRITICAL: Signal uplink failed (Missing Credentials)", "CRIT");
