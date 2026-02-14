@@ -1,5 +1,4 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { GroundedCase, Priority } from '../types';
 import { generateForensicReport } from '../utils/export';
 
@@ -10,7 +9,13 @@ interface FolderViewProps {
 }
 
 export const FolderView: React.FC<FolderViewProps> = ({ cases, folders, onAction }) => {
-  const [selectedFolder, setSelectedFolder] = useState<string>('VAULT');
+  const [selectedFolder, setSelectedFolder] = useState<string>(() => {
+    return localStorage.getItem('osint_folder_pref') || 'VAULT';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('osint_folder_pref', selectedFolder);
+  }, [selectedFolder]);
 
   const vaultCases = useMemo(() => cases.filter(c => c.isSaved && !c.isDiscarded), [cases]);
   
