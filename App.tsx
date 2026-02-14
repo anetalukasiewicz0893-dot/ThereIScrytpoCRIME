@@ -47,7 +47,6 @@ function App() {
     isPro: isProAvailable()
   });
 
-  // Listen for AI model changes (fallbacks)
   useEffect(() => {
     const handleFallback = () => {
       setAiModelStatus({
@@ -61,7 +60,6 @@ function App() {
     return () => window.removeEventListener('ai-model-fallback', handleFallback);
   }, []);
 
-  // LOAD DATA ON MOUNT
   useEffect(() => {
     setTitle(TITLES[Math.floor(Math.random() * TITLES.length)]);
     setSubtitle(SUBTITLES[Math.floor(Math.random() * SUBTITLES.length)]);
@@ -85,7 +83,6 @@ function App() {
     }
   }, []);
 
-  // SAVE DATA ON CHANGE
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cases));
   }, [cases]);
