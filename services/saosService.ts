@@ -1,22 +1,21 @@
-
-import { getAI, PRO_MODEL } from './aiClient';
+import { getAI, getCurrentModel, fallbackToFlash } from './aiClient';
 import { Type } from "@google/genai";
 import { CourtJudgment, AnalysisStatus, AIAnalysis, Priority } from '../types';
 
 /**
  * Fetches and analyzes real Polish court judgments using Gemini with Google Search grounding.
- * Prevents duplicates by using an exclusion list.
  */
 export const fetchJudgments = async (
   excludeSignatures: string[] = [],
   query: string = 'wyroki sądowe kryptowaluty Polska'
 ): Promise<CourtJudgment[]> => {
   const ai = getAI();
+  const currentModel = getCurrentModel();
   const excludeStr = excludeSignatures.slice(0, 40).join(', ');
   
   try {
     const response = await ai.models.generateContent({
-      model: PRO_MODEL,
+      model: currentModel,
       contents: `Search for real, specific Polish court judgments (wyroki sądowe) related to cryptocurrency, bitcoin, or virtual assets. 
         CRITICAL: Do NOT include any of the following case signatures: [${excludeStr}].
         Return a JSON object containing an array of 'judgments' that are NEW and NOT in the exclusion list.
@@ -77,7 +76,13 @@ export const fetchJudgments = async (
     }));
 
     return judgments;
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message?.includes('429') || error?.message?.toLowerCase().includes('exhausted')) {
+      fallbackToFlash();
+      if (currentModel !== "gemini-3-flash-preview") {
+        return fetchJudgments(excludeSignatures, query);
+      }
+    }
     console.error('Forensic Pipeline Error:', error);
     throw error;
   }

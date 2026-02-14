@@ -6,14 +6,14 @@ import { TacticalMap } from './components/TacticalMap';
 import { FolderView } from './components/FolderView';
 import { TerminalLog } from './components/TerminalLog';
 import { CryptoQuotes } from './components/CryptoQuotes';
-import { Manifesto } from './components/Manifesto';
 import { Readme } from './components/Readme';
 import { searchCryptoCases } from './services/osintService';
 import { fetchJudgments } from './services/saosService';
 import { GroundedCase, Priority } from './types';
+import { getCurrentModel, isProAvailable } from './services/aiClient';
 
 const INITIAL_FOLDERS = ["Uncategorized", "Exit Liquidity", "Meme Rugs", "Laundered Alpha"];
-const STORAGE_KEY = 'osint_ledger_v12_final_v2'; // Bumped version to ensure clean slate if needed
+const STORAGE_KEY = 'osint_ledger_v12_final_v2'; 
 
 const TITLES = [
   "Crypto Intelligence", "Digital Forensics", "Ledger Oversight", 
@@ -27,7 +27,7 @@ const SUBTITLES = [
   "Sifting through the mempool of judicial archives."
 ];
 
-type ViewType = 'TERMINAL' | 'MAP' | 'FOLDERS' | 'QUOTES' | 'MANIFESTO' | 'README';
+type ViewType = 'TERMINAL' | 'MAP' | 'FOLDERS' | 'QUOTES' | 'README';
 
 function App() {
   const [cases, setCases] = useState<GroundedCase[]>([]);
@@ -42,6 +42,24 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority] = useState<string>('ALL');
   const [filterFolder] = useState<string>('ALL');
+  const [aiModelStatus, setAiModelStatus] = useState({
+    name: getCurrentModel(),
+    isPro: isProAvailable()
+  });
+
+  // Listen for AI model changes (fallbacks)
+  useEffect(() => {
+    const handleFallback = () => {
+      setAiModelStatus({
+        name: getCurrentModel(),
+        isPro: isProAvailable()
+      });
+      addLog("ENGINE ALERT: Pro intelligence tokens exhausted. Falling back to Flash core.", "WARN");
+    };
+
+    window.addEventListener('ai-model-fallback', handleFallback);
+    return () => window.removeEventListener('ai-model-fallback', handleFallback);
+  }, []);
 
   // LOAD DATA ON MOUNT
   useEffect(() => {
@@ -62,12 +80,13 @@ function App() {
     }
 
     const savedView = localStorage.getItem('osint_view_pref');
-    if (savedView) setView(savedView as ViewType);
+    if (savedView && ['TERMINAL', 'MAP', 'FOLDERS', 'QUOTES', 'README'].includes(savedView)) {
+      setView(savedView as ViewType);
+    }
   }, []);
 
   // SAVE DATA ON CHANGE
   useEffect(() => {
-    // Save even if empty (e.g. after deletion)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cases));
   }, [cases]);
 
@@ -92,7 +111,6 @@ function App() {
   };
 
   const performAlphaHarvest = async () => {
-    // Check for API_KEY availability
     const apiKeyAvailable = (typeof process !== 'undefined' && process.env?.API_KEY) || (window as any).API_KEY;
 
     if (!apiKeyAvailable) {
@@ -103,14 +121,13 @@ function App() {
 
     setIsScanning(true);
     setError(null);
-    setStatus('FILTERING REPEAT SIGNALS & DISCOVERY OF NEW NODES...');
+    setStatus(`HARVESTING WITH ${aiModelStatus.name.split('-')[1].toUpperCase()} CORE...`);
     
-    // Identify all existing signatures to prevent duplicates
     const activeSigs = cases.filter(c => !c.isDiscarded).map(c => c.signature);
     const discardedSigs = cases.filter(c => c.isDiscarded).map(c => c.signature);
     const allKnownSigs = Array.from(new Set([...activeSigs, ...discardedSigs]));
 
-    addLog(`Excluding ${allKnownSigs.length} indexed signatures from scan.`, "INFO");
+    addLog(`Initiating OSINT sweep. Excluded ${allKnownSigs.length} known nodes.`, "INFO");
 
     try {
       const [osintResult, saosResult] = await Promise.all([
@@ -140,7 +157,6 @@ function App() {
         }
       }));
 
-      // Final filtration of duplicates just in case
       const incoming = [...osintResult.cases, ...mappedSaosCases].filter(nc => 
         !allKnownSigs.includes(nc.signature)
       );
@@ -204,7 +220,16 @@ function App() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="space-y-2">
             <h2 className="text-4xl font-black text-white tracking-tighter uppercase leading-none">{title}</h2>
-            <p className="text-slate-500 font-medium tracking-wide italic">{subtitle}</p>
+            <div className="flex items-center gap-3">
+              <p className="text-slate-500 font-medium tracking-wide italic">{subtitle}</p>
+              <div className="h-px w-8 bg-slate-800"></div>
+              <div className={`flex items-center gap-2 px-2 py-0.5 rounded border ${aiModelStatus.isPro ? 'border-cyan-500/30 bg-cyan-500/5' : 'border-amber-500/30 bg-amber-500/5'}`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${aiModelStatus.isPro ? 'bg-cyan-500' : 'bg-amber-500 animate-pulse'}`}></div>
+                <span className={`text-[8px] font-black uppercase tracking-widest ${aiModelStatus.isPro ? 'text-cyan-500' : 'text-amber-500'}`}>
+                  Engine: {aiModelStatus.isPro ? 'Pro Active' : 'Flash Fallback'}
+                </span>
+              </div>
+            </div>
           </div>
           <div className="flex gap-4">
              <button 
@@ -228,7 +253,7 @@ function App() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
             <div className="flex gap-4 border-b border-slate-900 pb-2 overflow-x-auto whitespace-nowrap scrollbar-hide">
-              {(['TERMINAL', 'MAP', 'FOLDERS', 'QUOTES', 'MANIFESTO', 'README'] as ViewType[]).map(v => (
+              {(['TERMINAL', 'MAP', 'FOLDERS', 'QUOTES', 'README'] as ViewType[]).map(v => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
@@ -246,6 +271,11 @@ function App() {
                   <h4 className="text-sm font-black text-rose-500 uppercase tracking-widest">Protocol Error</h4>
                 </div>
                 <p className="text-xs text-rose-400 font-bold uppercase tracking-widest leading-relaxed">{error}</p>
+                {!aiModelStatus.isPro && (
+                  <p className="text-[9px] text-amber-500 font-black uppercase tracking-widest bg-amber-500/10 p-2 rounded inline-block mt-2">
+                    Note: Pro model tokens are exhausted. Switching to Free/Flash version.
+                  </p>
+                )}
               </div>
             )}
 
@@ -265,7 +295,6 @@ function App() {
               {view === 'MAP' && <TacticalMap cases={filteredCases} />}
               {view === 'FOLDERS' && <FolderView cases={cases} folders={folders} onAction={handleAction} />}
               {view === 'QUOTES' && <CryptoQuotes />}
-              {view === 'MANIFESTO' && <Manifesto />}
               {view === 'README' && <Readme />}
             </div>
           </div>
@@ -278,9 +307,14 @@ function App() {
 
       <footer className="fixed bottom-0 left-0 w-full bg-[#020617]/95 border-t border-slate-900/60 p-4 text-[9px] font-black text-slate-600 flex justify-between items-center px-12 uppercase tracking-widest z-50 print:hidden backdrop-blur-md">
         <div>Registry: OSINT-INTEL v12.1.2 // PERSISTENT STORAGE ACTIVE</div>
-        <div className="flex items-center gap-3">
-          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_10px_cyan]"></span>
-          Tactical Link Established
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+             <span className={`text-[8px] font-bold ${aiModelStatus.isPro ? 'text-cyan-800' : 'text-amber-800'}`}>INTEL_CORE: {aiModelStatus.name}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_10px_cyan]"></span>
+            Tactical Link Established
+          </div>
         </div>
       </footer>
     </div>

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { GroundedCase, Priority } from '../types';
 import { generateForensicReport } from '../utils/export';
+import { getAI, getCurrentModel } from '../services/aiClient';
 
 interface FolderViewProps {
   cases: GroundedCase[];
@@ -9,15 +10,17 @@ interface FolderViewProps {
 }
 
 export const FolderView: React.FC<FolderViewProps> = ({ cases, folders, onAction }) => {
-  // Initialize state from localStorage or default to 'VAULT'
   const [selectedFolder, setSelectedFolder] = useState<string>(() => {
     const saved = localStorage.getItem('osint_folder_pref');
     return saved || 'VAULT';
   });
 
-  // Persist selected folder whenever it changes
+  const [synthesis, setSynthesis] = useState<string>('');
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
+
   useEffect(() => {
     localStorage.setItem('osint_folder_pref', selectedFolder);
+    setSynthesis(''); // Reset synthesis when folder changes
   }, [selectedFolder]);
 
   const vaultCases = useMemo(() => cases.filter(c => c.isSaved && !c.isDiscarded), [cases]);
@@ -34,6 +37,35 @@ export const FolderView: React.FC<FolderViewProps> = ({ cases, folders, onAction
     if (selectedFolder === 'VAULT') return vaultCases;
     return cases.filter(c => c.folder === selectedFolder && !c.isDiscarded);
   }, [cases, selectedFolder, vaultCases]);
+
+  // Folder Synthesis Logic
+  useEffect(() => {
+    if (activeCases.length > 0 && !synthesis && !isSynthesizing) {
+      const synthesizeFolder = async () => {
+        setIsSynthesizing(true);
+        try {
+          const ai = getAI();
+          const caseDetails = activeCases.map(c => `[${c.signature}]: ${c.summary} (Amount: ${c.amount})`).join('\n');
+          const response = await ai.models.generateContent({
+            model: getCurrentModel(),
+            contents: `Summarize the following legal intelligence assets in the folder "${selectedFolder}". 
+            Highlight common themes, the total estimated impact, and the highest risk vectors. 
+            Keep it professional, forensic, and concise (max 100 words).
+            
+            ASSETS:
+            ${caseDetails}`,
+          });
+          setSynthesis(response.text || 'Unable to generate synthesis.');
+        } catch (err) {
+          console.error("Synthesis failed:", err);
+          setSynthesis('Intelligence synthesis uplink interrupted.');
+        } finally {
+          setIsSynthesizing(false);
+        }
+      };
+      synthesizeFolder();
+    }
+  }, [activeCases, selectedFolder, synthesis, isSynthesizing]);
 
   const handleExport = () => {
     generateForensicReport(activeCases, selectedFolder);
@@ -108,15 +140,33 @@ export const FolderView: React.FC<FolderViewProps> = ({ cases, folders, onAction
           {activeCases.length > 0 && (
             <button 
               onClick={handleExport}
-              className="ml-6 px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all flex items-center gap-2"
+              className="ml-6 px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all flex items-center gap-2 group"
             >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3 group-hover:animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Export Brief
+              Download Folder Manifest
             </button>
           )}
         </div>
+
+        {activeCases.length > 0 && (
+          <div className="bg-slate-900/20 border border-slate-800/40 p-6 rounded-2xl space-y-3">
+             <div className="flex items-center gap-3">
+               <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse"></div>
+               <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-500">Tactical Synthesis</h4>
+             </div>
+             {isSynthesizing ? (
+               <div className="flex gap-2">
+                 <div className="w-1.5 h-1.5 bg-slate-700 rounded-full animate-bounce"></div>
+                 <div className="w-1.5 h-1.5 bg-slate-700 rounded-full animate-bounce [animation-delay:-0.1s]"></div>
+                 <div className="w-1.5 h-1.5 bg-slate-700 rounded-full animate-bounce [animation-delay:-0.2s]"></div>
+               </div>
+             ) : (
+               <p className="text-[11px] text-slate-400 italic leading-relaxed border-l border-slate-800 pl-4">{synthesis || 'Awaiting analytical computation...'}</p>
+             )}
+          </div>
+        )}
 
         {activeCases.length === 0 ? (
           <div className="p-20 border-2 border-dashed border-slate-900 rounded-[2rem] text-center bg-slate-950/20">

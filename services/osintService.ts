@@ -1,5 +1,4 @@
-
-import { getAI, PRO_MODEL } from './aiClient';
+import { getAI, getCurrentModel, fallbackToFlash } from './aiClient';
 import { Type } from "@google/genai";
 import { GroundedCase, Priority } from "../types";
 
@@ -12,10 +11,11 @@ export const searchCryptoCases = async (
 ): Promise<{ cases: GroundedCase[]; sources: { title: string; uri: string }[] }> => {
   const excludeList = [...existingSignatures, ...discardedSignatures].slice(0, 50).join(', ');
   const ai = getAI();
+  const currentModel = getCurrentModel();
   
   try {
     const response = await ai.models.generateContent({
-      model: PRO_MODEL,
+      model: currentModel,
       contents: `Search for real Polish and European Union court records or legal news involving cryptocurrency crimes (theft, fraud, laundering). 
         Exclude these signatures: [${excludeList}]. 
         Find 10 unique cases and return them in the specified JSON schema.`,
@@ -63,7 +63,6 @@ export const searchCryptoCases = async (
     const content = response.text;
     const parsedData = content ? JSON.parse(content) : { cases: [] };
 
-    // Extract grounding chunks for source transparency
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
     const searchSources = groundingChunks
       .filter(chunk => chunk.web && chunk.web.uri)
@@ -78,12 +77,18 @@ export const searchCryptoCases = async (
       isSaved: false,
       isDiscarded: false,
       folder: 'Uncategorized',
-      // Ensure sourceUrl is populated, fallback to first search source if model-provided one is invalid
       sourceUrl: c.sourceUrl && c.sourceUrl.startsWith('http') ? c.sourceUrl : (searchSources[0]?.uri || "#")
     }));
 
     return { cases, sources: searchSources };
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message?.includes('429') || error?.message?.toLowerCase().includes('exhausted')) {
+      fallbackToFlash();
+      // Retry once with Flash if it wasn't already Flash
+      if (currentModel !== "gemini-3-flash-preview") {
+        return searchCryptoCases(existingSignatures, discardedSignatures);
+      }
+    }
     console.error("Intelligence Search Error:", error);
     throw error;
   }

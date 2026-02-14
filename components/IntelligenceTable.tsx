@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Priority, GroundedCase } from '../types';
 
@@ -17,6 +16,12 @@ const parseAmount = (amountStr: string): number => {
   return match ? parseFloat(match[0]) : 0;
 };
 
+const isValidSource = (url?: string) => {
+  if (!url) return false;
+  if (url === '#' || url.includes('saos.org.pl/') === false && url.includes('gov.pl') === false && url.includes('http') === false) return false;
+  return true;
+};
+
 export const IntelligenceTable: React.FC<IntelligenceTableProps> = ({ data, onSave, onDiscard, onDelete, onMove, folders }) => {
   if (data.length === 0) {
     return (
@@ -28,6 +33,11 @@ export const IntelligenceTable: React.FC<IntelligenceTableProps> = ({ data, onSa
       </div>
     );
   }
+
+  const handleVerifySource = (signature: string) => {
+    const query = encodeURIComponent(`site:.gov.pl OR site:saos.org.pl "wyrok" "${signature}"`);
+    window.open(`https://www.google.com/search?q=${query}`, '_blank');
+  };
 
   return (
     <div className="overflow-hidden rounded-[2.5rem] border border-slate-800/60 bg-slate-950/20 shadow-2xl print:border-none print:shadow-none print:rounded-none">
@@ -47,6 +57,7 @@ export const IntelligenceTable: React.FC<IntelligenceTableProps> = ({ data, onSa
               const amount = parseAmount(item.amount);
               const isHighValue = amount > 200000;
               const isHighPriority = item.priority === Priority.HIGH || isHighValue;
+              const linkValid = isValidSource(item.sourceUrl);
               
               return (
                 <tr 
@@ -82,7 +93,26 @@ export const IntelligenceTable: React.FC<IntelligenceTableProps> = ({ data, onSa
                     <p className="text-[13px] text-slate-400 font-medium leading-relaxed italic print:text-slate-700">"{item.summary}"</p>
                     <div className="mt-4 text-[9px] font-bold text-slate-600 uppercase tracking-widest">{item.article}</div>
                     <div className="mt-5 flex gap-6 print:hidden">
-                      <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="text-[9px] font-black uppercase text-cyan-600 hover:text-cyan-400 transition-all border-b border-cyan-900/30">Registry Link</a>
+                      {linkValid ? (
+                        <a 
+                          href={item.sourceUrl} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="text-[9px] font-black uppercase text-cyan-600 hover:text-cyan-400 transition-all border-b border-cyan-900/30 flex items-center gap-1"
+                        >
+                          Registry Link
+                          <svg className="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        </a>
+                      ) : (
+                        <button 
+                          onClick={() => handleVerifySource(item.signature)}
+                          className="text-[9px] font-black uppercase text-amber-600 hover:text-amber-400 transition-all border-b border-amber-900/30 flex items-center gap-1"
+                          title="Source link suspect. Trigger OSINT search."
+                        >
+                          Verify via Search
+                          <svg className="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        </button>
+                      )}
                     </div>
                   </td>
                   <td className="px-10 py-10 print:hidden">
