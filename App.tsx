@@ -4,7 +4,7 @@ import { TerminalHeader } from './components/TerminalHeader';
 import { StatCards } from './components/StatCards';
 import { IntelligenceTable } from './components/IntelligenceTable';
 import { TacticalMap } from './components/TacticalMap';
-import { CryptoJoke } from './components/CryptoJoke';
+import { CryptoQuotes } from './components/CryptoQuotes';
 import { Manifesto } from './components/Manifesto';
 import { Readme } from './components/Readme';
 import { searchCryptoCases } from './services/geminiService';
@@ -12,6 +12,17 @@ import { fetchJudgments } from './services/saosService';
 import { GroundedCase, Priority } from './types';
 
 const INITIAL_FOLDERS = ["Uncategorized", "Exit Liquidity", "Meme Rugs", "Laundered Alpha"];
+
+const TITLES = [
+  "Crypto Intelligence",
+  "Digital Forensics",
+  "Ledger Oversight",
+  "Blockchain Audit",
+  "Asset Recovery",
+  "On-Chain Intel",
+  "Forensic Ledger"
+];
+
 const SUBTITLES = [
   "The chain doesn't lie, but forensic analysis reveals the motive.",
   "Indexing the digital ruins of the previous cycles.",
@@ -30,23 +41,25 @@ function App() {
   const [isScanning, setIsScanning] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<'TERMINAL' | 'MAP' | 'FOLDERS' | 'JOKES' | 'MANIFESTO' | 'README'>('TERMINAL');
+  const [view, setView] = useState<'TERMINAL' | 'MAP' | 'FOLDERS' | 'QUOTES' | 'MANIFESTO' | 'README'>('TERMINAL');
   const [subtitle, setSubtitle] = useState('');
+  const [title, setTitle] = useState('Crypto Intelligence');
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority, setFilterPriority] = useState<string>('ALL');
   const [filterFolder, setFilterFolder] = useState<string>('ALL');
 
   useEffect(() => {
-    // Generate new subtitle on every mount/refresh
+    // Generate new title and subtitle on every mount/refresh
+    setTitle(TITLES[Math.floor(Math.random() * TITLES.length)]);
     setSubtitle(SUBTITLES[Math.floor(Math.random() * SUBTITLES.length)]);
     
-    const savedData = localStorage.getItem('osint_ledger_v8');
+    const savedData = localStorage.getItem('osint_ledger_v9');
     if (savedData) setCases(JSON.parse(savedData));
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('osint_ledger_v8', JSON.stringify(cases));
+    localStorage.setItem('osint_ledger_v9', JSON.stringify(cases));
   }, [cases]);
 
   const performAlphaHarvest = async (isFresh: boolean = false) => {
@@ -144,12 +157,12 @@ function App() {
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-10 print:hidden">
           <div className="space-y-6 flex-1">
              <div className="flex flex-wrap gap-2 md:gap-4">
-                {['TERMINAL', 'MAP', 'FOLDERS', 'JOKES', 'MANIFESTO', 'README'].map(v => (
+                {['TERMINAL', 'MAP', 'FOLDERS', 'QUOTES', 'MANIFESTO', 'README'].map(v => (
                   <button key={v} onClick={() => setView(v as any)} className={`px-4 md:px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border transition-all ${view === v ? 'bg-cyan-500/10 border-cyan-500 text-cyan-400' : 'border-slate-800 text-slate-600 hover:text-white'}`}>{v}</button>
                 ))}
              </div>
              <h2 className="text-7xl font-black text-white trm-heading uppercase leading-[0.85]">
-               Crypto <br/><span className="text-cyan-500">Intelligence</span>
+               {title.split(' ')[0]} <br/><span className="text-cyan-500">{title.split(' ').slice(1).join(' ')}</span>
              </h2>
              <p className="text-slate-500 max-w-2xl font-medium italic">
                {subtitle}
@@ -168,7 +181,6 @@ function App() {
 
         {view === 'TERMINAL' && (
           <div className="space-y-10">
-            {/* Export buttons only shown when a folder is selected */}
             {filterFolder !== 'ALL' && (
               <div className="flex flex-wrap gap-4 print:hidden animate-in fade-in slide-in-from-top-4 duration-500">
                 <button onClick={() => handleExport('PDF')} className="px-6 py-3 bg-slate-900 border border-slate-800 rounded-xl text-[10px] font-black text-cyan-500 uppercase tracking-widest hover:bg-cyan-500 hover:text-black transition-all">Save PDF Dossier</button>
@@ -224,13 +236,13 @@ function App() {
           </div>
         )}
 
-        {view === 'JOKES' && <CryptoJoke />}
+        {view === 'QUOTES' && <CryptoQuotes />}
         {view === 'MANIFESTO' && <Manifesto />}
         {view === 'README' && <Readme />}
       </main>
 
       <footer className="fixed bottom-0 left-0 w-full bg-[#020617]/95 border-t border-slate-900/60 p-6 text-[10px] font-black text-slate-600 flex justify-between items-center px-12 uppercase tracking-widest z-50 print:hidden">
-        <div>Registry: <span className="text-slate-300">INTEL-OSINT v8.0</span></div>
+        <div>Registry: <span className="text-slate-300">INTEL-OSINT v9.0</span></div>
         <div className="flex items-center gap-3">
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_15px_cyan]"></span>
           System Online // Verified Data Stream
