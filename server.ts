@@ -39,10 +39,10 @@ app.get('/api/scan', async (req, res) => {
   }
 });
 
-// Serve static files - use path.join for cross-platform robustness
+// Serve static files from the root directory
 app.use(express.static(__dirname));
 
-// Fallback to index.html for React SPA routing
+// Fallback to index.html for SPA support
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -50,6 +50,6 @@ app.get('*', (req, res) => {
 app.listen(port, () => {
   console.log('=========================================');
   console.log(`OSINT TERMINAL LIVE AT PORT: ${port}`);
-  console.log(`API_KEY STATUS: ${process.env.API_KEY ? 'CONFIGURED' : 'MISSING'}`);
+  console.log(`GEMINI API_KEY: ${process.env.API_KEY ? 'CONFIGURED' : 'MISSING'}`);
   console.log('=========================================');
 });

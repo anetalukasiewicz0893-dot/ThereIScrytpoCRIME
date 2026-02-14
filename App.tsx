@@ -83,14 +83,13 @@ function App() {
   };
 
   const performAlphaHarvest = async () => {
-    // SAFE ENV CHECK: Browser friendly
-    const env = typeof process !== 'undefined' ? process.env : (window as any);
-    const hasKey = !!(env.API_KEY || (window as any).API_KEY);
+    // Check for API_KEY presence in a way that handles browser environments
+    const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : (window as any).API_KEY;
 
-    if (!hasKey) {
-      const msg = "CRITICAL ERROR: API_KEY is missing from environment secrets.";
+    if (!apiKey) {
+      const msg = "CRITICAL ERROR: Google Gemini API_KEY is missing. Check your environment configuration.";
       setError(msg);
-      addLog("UPLINK FAILURE: Missing API Key", "CRIT");
+      addLog("UPLINK FAILURE: Missing API Credentials", "CRIT");
       return;
     }
 
@@ -245,8 +244,7 @@ function App() {
 
             {status && (
               <div className="text-[10px] font-mono text-cyan-500 animate-pulse tracking-widest uppercase py-2">
-              {`>> ${status}`}  
-
+                >> {status}
               </div>
             )}
 

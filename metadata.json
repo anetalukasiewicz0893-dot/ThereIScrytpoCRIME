@@ -1,6 +1,6 @@
 {
   "name": "CryptoCrime OSINT Terminal",
-  "description": "A professional law enforcement-style intelligence dashboard for scanning and analyzing Polish court judgments related to cryptocurrency crimes using OpenAI.",
+  "description": "A professional law enforcement-style intelligence dashboard for scanning and analyzing Polish court judgments related to cryptocurrency crimes using Google Gemini 3.",
   "requestFramePermissions": [
     "geolocation"
   ]
