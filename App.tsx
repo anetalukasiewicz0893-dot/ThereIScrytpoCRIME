@@ -4,6 +4,7 @@ import { TerminalHeader } from './components/TerminalHeader';
 import { StatCards } from './components/StatCards';
 import { IntelligenceTable } from './components/IntelligenceTable';
 import { TacticalMap } from './components/TacticalMap';
+import { FolderView } from './components/FolderView';
 import { CryptoQuotes } from './components/CryptoQuotes';
 import { Manifesto } from './components/Manifesto';
 import { Readme } from './components/Readme';
@@ -49,16 +50,22 @@ function App() {
     setTitle(TITLES[Math.floor(Math.random() * TITLES.length)]);
     setSubtitle(SUBTITLES[Math.floor(Math.random() * SUBTITLES.length)]);
     
-    const savedData = localStorage.getItem('osint_ledger_v11');
+    const savedData = localStorage.getItem('osint_ledger_v12');
     if (savedData) setCases(JSON.parse(savedData));
+
+    const savedView = localStorage.getItem('osint_view_pref');
+    if (savedView) setView(savedView as ViewType);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('osint_ledger_v11', JSON.stringify(cases));
+    localStorage.setItem('osint_ledger_v12', JSON.stringify(cases));
   }, [cases]);
 
+  useEffect(() => {
+    localStorage.setItem('osint_view_pref', view);
+  }, [view]);
+
   const performAlphaHarvest = async (isFresh: boolean = false) => {
-    // Standard API key check - using process.env.API_KEY as provided by platform
     const hasKey = !!process.env.API_KEY;
     if (!hasKey) {
       setError("CRITICAL ERROR: API_KEY is missing from environment secrets.");
@@ -67,7 +74,7 @@ function App() {
 
     setIsScanning(true);
     setError(null);
-    setStatus(isFresh ? 'PURGING LOCAL CACHE. RE-ESTABLISHING UPLINK...' : 'SCANNING FOR NEW SIGNATURES...');
+    setStatus(isFresh ? 'PURGING LOCAL CACHE. RE-ESTABLISHING UPLINK...' : 'INITIATING MULTI-VECTOR SIGNAL HARVEST...');
     
     if (isFresh) setCases(prev => prev.filter(c => c.isSaved));
 
@@ -93,7 +100,7 @@ function App() {
         amount: sj.analysis?.amount || 'N/A',
         article: sj.analysis?.article || 'Unknown',
         priority: (sj.analysis?.priority as Priority) || Priority.LOW,
-        sourceUrl: `https://www.saos.org.pl/judgments/${sj.id}`,
+        sourceUrl: (sj as any).sourceUrl || `https://www.saos.org.pl/judgments/${sj.id}`,
         region: 'Poland',
         folder: 'Uncategorized',
         isSaved: false,
@@ -147,7 +154,7 @@ function App() {
       <div className="scanline print:hidden"></div>
       <TerminalHeader searchTerm={searchTerm} onSearchChange={setSearchTerm} />
       
-      <main className="max-w-7xl mx-auto px-6 py-10 space-y-12">
+      <main className="max-w-7xl mx-auto px-6 py-10 space-y-12 pb-32">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="space-y-2">
             <h2 className="text-4xl font-black text-white tracking-tighter uppercase">{title}</h2>
@@ -172,7 +179,7 @@ function App() {
 
         <StatCards {...stats} />
 
-        <div className="flex gap-4 border-b border-slate-900 pb-2 overflow-x-auto whitespace-nowrap">
+        <div className="flex gap-4 border-b border-slate-900 pb-2 overflow-x-auto whitespace-nowrap scrollbar-hide">
           {(['TERMINAL', 'MAP', 'FOLDERS', 'QUOTES', 'MANIFESTO', 'README'] as ViewType[]).map(v => (
             <button
               key={v}
@@ -214,17 +221,24 @@ function App() {
             />
           )}
           {view === 'MAP' && <TacticalMap cases={filteredCases} />}
+          {view === 'FOLDERS' && (
+            <FolderView 
+              cases={cases} 
+              folders={folders} 
+              onAction={handleAction} 
+            />
+          )}
           {view === 'QUOTES' && <CryptoQuotes />}
           {view === 'MANIFESTO' && <Manifesto />}
           {view === 'README' && <Readme />}
         </div>
       </main>
 
-      <footer className="fixed bottom-0 left-0 w-full bg-[#020617]/95 border-t border-slate-900/60 p-4 text-[9px] font-black text-slate-600 flex justify-between items-center px-12 uppercase tracking-widest z-50 print:hidden">
-        <div>Registry: OSINT-INTEL v11.0.4</div>
+      <footer className="fixed bottom-0 left-0 w-full bg-[#020617]/95 border-t border-slate-900/60 p-4 text-[9px] font-black text-slate-600 flex justify-between items-center px-12 uppercase tracking-widest z-50 print:hidden backdrop-blur-md">
+        <div>Registry: OSINT-INTEL v12.0.1</div>
         <div className="flex items-center gap-3">
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_10px_cyan]"></span>
-          Tactical Link Established
+          Tactical Link Established // View: {view}
         </div>
       </footer>
     </div>

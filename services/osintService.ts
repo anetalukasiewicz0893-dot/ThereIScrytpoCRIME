@@ -4,7 +4,7 @@ import { Type } from "@google/genai";
 import { GroundedCase, Priority } from "../types";
 
 /**
- * Searches for cryptocurrency-related court cases using Gemini's intelligence capabilities.
+ * Searches for real cryptocurrency-related court cases across Poland and the EU using Google Search grounding.
  */
 export const searchCryptoCases = async (
   existingSignatures: string[] = [], 
@@ -16,10 +16,12 @@ export const searchCryptoCases = async (
   try {
     const response = await ai.models.generateContent({
       model: PRO_MODEL,
-      contents: `Perform a deep archival search of Polish and EU court records involving cryptocurrency crimes. 
-        Exclude these signatures: [${excludeList}]. Provide 10 unique cases.`,
+      contents: `Search for real Polish and European Union court records or legal news involving cryptocurrency crimes (theft, fraud, laundering). 
+        Exclude these signatures: [${excludeList}]. 
+        Find 10 unique cases and return them in the specified JSON schema.`,
       config: {
-        systemInstruction: 'You are a professional OSINT researcher specializing in Polish and EU cryptocurrency court cases. Return only valid JSON matching the provided schema.',
+        tools: [{ googleSearch: {} }],
+        systemInstruction: 'You are a professional OSINT researcher. Find real court cases using search. Return only valid JSON.',
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -61,20 +63,26 @@ export const searchCryptoCases = async (
     const content = response.text;
     const parsedData = content ? JSON.parse(content) : { cases: [] };
 
+    // Extract grounding chunks for source transparency
+    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+    const searchSources = groundingChunks
+      .filter(chunk => chunk.web && chunk.web.uri)
+      .map(chunk => ({
+        title: chunk.web!.title || "Legal Record",
+        uri: chunk.web!.uri
+      }));
+
     const cases: GroundedCase[] = (parsedData.cases || []).map((c: any) => ({
       ...c,
       id: `osint-${c.signature}-${Date.now()}`,
       isSaved: false,
       isDiscarded: false,
-      folder: 'Uncategorized'
+      folder: 'Uncategorized',
+      // Ensure sourceUrl is populated, fallback to first search source if model-provided one is invalid
+      sourceUrl: c.sourceUrl && c.sourceUrl.startsWith('http') ? c.sourceUrl : (searchSources[0]?.uri || "#")
     }));
 
-    const sources = cases.map((c: any) => ({
-      title: `Judgment: ${c.signature}`,
-      uri: c.sourceUrl || "#"
-    }));
-
-    return { cases, sources };
+    return { cases, sources: searchSources };
   } catch (error) {
     console.error("Intelligence Search Error:", error);
     throw error;

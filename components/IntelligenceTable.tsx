@@ -57,7 +57,15 @@ export const IntelligenceTable: React.FC<IntelligenceTableProps> = ({ data, onSa
                     <div className="text-[10px] text-slate-500 mt-2 font-bold uppercase tracking-widest">{item.court}</div>
                     <div className="mt-4 flex flex-wrap gap-2 print:hidden">
                       <span className="px-3 py-1 bg-slate-900 rounded-lg text-[8px] font-black text-slate-400 border border-slate-800 uppercase tracking-widest">{item.region}</span>
-                      <span className="px-3 py-1 bg-cyan-500/10 rounded-lg text-[8px] font-black text-cyan-400 border border-cyan-500/20 uppercase tracking-widest">{item.folder || 'Uncategorized'}</span>
+                      <div className="relative inline-block group/folder">
+                        <select 
+                          value={item.folder || 'Uncategorized'}
+                          onChange={(e) => onMove(item.id, e.target.value)}
+                          className="appearance-none bg-cyan-500/10 hover:bg-cyan-500/20 rounded-lg text-[8px] font-black text-cyan-400 border border-cyan-500/20 px-3 py-1 uppercase tracking-widest outline-none cursor-pointer transition-all"
+                        >
+                          {folders.map(f => <option key={f} value={f} className="bg-slate-950 text-white">{f}</option>)}
+                        </select>
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-10">
