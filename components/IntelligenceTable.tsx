@@ -18,7 +18,7 @@ const parseAmount = (amountStr: string): number => {
 
 const isValidSource = (url?: string) => {
   if (!url) return false;
-  if (url === '#' || (url.includes('saos.org.pl/') === false && url.includes('gov.pl') === false && url.includes('http') === false)) return false;
+  if (url === '#' || url.includes('saos.org.pl/') === false && url.includes('gov.pl') === false && url.includes('http') === false) return false;
   return true;
 };
 
@@ -35,7 +35,6 @@ export const IntelligenceTable: React.FC<IntelligenceTableProps> = ({ data, onSa
   }
 
   const handleVerifySource = (signature: string) => {
-    // Generate an OSINT query for Polish court records based on the signature
     const query = encodeURIComponent(`site:.gov.pl OR site:saos.org.pl "wyrok" "${signature}"`);
     window.open(`https://www.google.com/search?q=${query}`, '_blank');
   };
