@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { GroundedCase, Priority } from '../types';
+import { generateForensicReport } from '../utils/export';
 
 interface FolderViewProps {
   cases: GroundedCase[];
@@ -25,6 +26,10 @@ export const FolderView: React.FC<FolderViewProps> = ({ cases, folders, onAction
     if (selectedFolder === 'VAULT') return vaultCases;
     return cases.filter(c => c.folder === selectedFolder && !c.isDiscarded);
   }, [cases, selectedFolder, vaultCases]);
+
+  const handleExport = () => {
+    generateForensicReport(activeCases, selectedFolder);
+  };
 
   return (
     <div className="space-y-12 animate-in fade-in duration-500">
@@ -85,11 +90,24 @@ export const FolderView: React.FC<FolderViewProps> = ({ cases, folders, onAction
       </div>
 
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <h3 className="text-sm font-black text-white uppercase tracking-widest">
-            Directory Content: <span className="text-cyan-500">{selectedFolder}</span>
-          </h3>
-          <div className="h-px flex-1 bg-slate-900"></div>
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-4 flex-1">
+            <h3 className="text-sm font-black text-white uppercase tracking-widest whitespace-nowrap">
+              Directory: <span className="text-cyan-500">{selectedFolder}</span>
+            </h3>
+            <div className="h-px w-full bg-slate-900"></div>
+          </div>
+          {activeCases.length > 0 && (
+            <button 
+              onClick={handleExport}
+              className="ml-6 px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all flex items-center gap-2"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Export Brief
+            </button>
+          )}
         </div>
 
         {activeCases.length === 0 ? (
@@ -119,7 +137,7 @@ export const FolderView: React.FC<FolderViewProps> = ({ cases, folders, onAction
                       onClick={() => onAction(item.id, 'SAVE')}
                       className="text-[9px] font-black text-slate-500 hover:text-white uppercase tracking-widest"
                     >
-                      Unpin
+                      {item.isSaved ? 'Unpin' : 'Pin'}
                     </button>
                     <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="text-[9px] font-black text-cyan-600 hover:text-cyan-400 uppercase tracking-widest">Source</a>
                   </div>
