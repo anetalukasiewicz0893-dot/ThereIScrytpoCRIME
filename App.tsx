@@ -245,7 +245,8 @@ function App() {
 
             {status && (
               <div className="text-[10px] font-mono text-cyan-500 animate-pulse tracking-widest uppercase py-2">
-                >> {status}
+              {`>> ${status}`}  
+
               </div>
             )}
 
