@@ -1,3 +1,4 @@
+
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -10,8 +11,9 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors());
-app.use(express.json());
+// Use type assertion to resolve middleware type mismatch errors in Express app.use
+app.use(cors() as any);
+app.use(express.json() as any);
 
 // Proxy API for SAOS (Polish Judgment Database)
 app.get('/api/scan', async (req, res) => {
@@ -40,14 +42,16 @@ app.get('/api/scan', async (req, res) => {
 
 // Serve static files from the root directory
 // Explicitly setting cache-control to prevent stale files in browser
+// Fixed: Using 'any' for res and renaming 'path' parameter to 'filePath' to avoid shadowing the imported 'path' module.
+// Fixed: Added 'as any' to the static middleware to satisfy the app.use overload expectations.
 app.use(express.static(__dirname, {
     maxAge: '1h',
-    setHeaders: (res, path) => {
-        if (path.endsWith('.html')) {
+    setHeaders: (res: any, filePath: string) => {
+        if (filePath.endsWith('.html')) {
             res.setHeader('Cache-Control', 'no-cache');
         }
     }
-}));
+}) as any);
 
 // Fallback to index.html for SPA support - CRITICAL for React routing on refresh
 app.get('*', (req, res) => {

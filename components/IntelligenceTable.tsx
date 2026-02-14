@@ -18,7 +18,7 @@ const parseAmount = (amountStr: string): number => {
 
 const isValidSource = (url?: string) => {
   if (!url || url === '#' || url === 'https://www.saos.org.pl/' || url === 'https://www.saos.org.pl') return false;
-  // A direct judgment link usually contains specific patterns
+  // A direct judgment link usually contains specific patterns or is from a gov/trusted domain
   const isDirectJudgment = url.includes('/judgments/') || url.includes('.gov.pl/') || url.includes('curia.europa.eu') || url.includes('sip.lex.pl');
   return url.startsWith('http') && isDirectJudgment;
 };

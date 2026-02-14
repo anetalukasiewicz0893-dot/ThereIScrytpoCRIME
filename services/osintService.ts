@@ -2,9 +2,6 @@ import { getAI, getCurrentModel, fallbackToFlash } from './aiClient';
 import { Type } from "@google/genai";
 import { GroundedCase, Priority } from "../types";
 
-/**
- * Searches for real cryptocurrency-related court cases across Poland and the EU using Google Search grounding.
- */
 export const searchCryptoCases = async (
   existingSignatures: string[] = [], 
   discardedSignatures: string[] = []
@@ -16,9 +13,7 @@ export const searchCryptoCases = async (
   try {
     const response = await ai.models.generateContent({
       model: currentModel,
-      contents: `Search for real Polish and European Union court records or legal news involving cryptocurrency crimes (theft, fraud, laundering). 
-        Exclude these signatures: [${excludeList}]. 
-        Find 10 unique cases and return them in the specified JSON schema.`,
+      contents: [{ parts: [{ text: `Search for real Polish and European Union court records or legal news involving cryptocurrency crimes (theft, fraud, laundering). Exclude these signatures: [${excludeList}]. Find 10 unique cases.` }] }],
       config: {
         tools: [{ googleSearch: {} }],
         systemInstruction: 'You are a professional OSINT researcher. Find real court cases using search. Return only valid JSON.',
@@ -35,7 +30,7 @@ export const searchCryptoCases = async (
                   court: { type: Type.STRING },
                   date: { type: Type.STRING },
                   isCryptoCrime: { type: Type.BOOLEAN },
-                  summary: { type: Type.STRING, description: "Polish summary" },
+                  summary: { type: Type.STRING },
                   amount: { type: Type.STRING },
                   article: { type: Type.STRING },
                   priority: { type: Type.STRING, enum: ["High", "Medium", "Low"] },
@@ -60,7 +55,7 @@ export const searchCryptoCases = async (
       }
     });
 
-    const content = response.text;
+    const content = response.text; // Accessing property, not method
     const parsedData = content ? JSON.parse(content) : { cases: [] };
 
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
@@ -84,12 +79,10 @@ export const searchCryptoCases = async (
   } catch (error: any) {
     if (error?.message?.includes('429') || error?.message?.toLowerCase().includes('exhausted')) {
       fallbackToFlash();
-      // Retry once with Flash if it wasn't already Flash
       if (currentModel !== "gemini-3-flash-preview") {
         return searchCryptoCases(existingSignatures, discardedSignatures);
       }
     }
-    console.error("Intelligence Search Error:", error);
     throw error;
   }
 };
