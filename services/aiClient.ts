@@ -1,10 +1,17 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 /**
  * Shared Google Gemini AI client instance.
- * The API key is obtained exclusively from the environment variable process.env.API_KEY.
+ * Ensures compatibility with browser environments where process.env might be missing.
  */
-export const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+export const getAI = () => {
+  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : (window as any).API_KEY;
+  if (!apiKey) {
+    console.warn("OSINT Warning: API_KEY is undefined. Signal uplink will fail.");
+  }
+  return new GoogleGenAI({ apiKey: apiKey || '' });
+};
 
 export const FLASH_MODEL = "gemini-3-flash-preview";
 export const PRO_MODEL = "gemini-3-pro-preview";

@@ -1,77 +1,53 @@
 
-const SAOS_API_BASE = 'https://www.saos.org.pl/api/judgments';
+import express from 'express';
+import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import axios from 'axios';
 
-export default {
-  async fetch(request: Request, env: any): Promise<Response> {
-    const url = new URL(request.url);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-    // CORS Headers
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    };
+const app = express();
+const port = process.env.PORT || 3000;
 
-    // Handle Preflight
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
-    }
+app.use(cors());
+app.use(express.json());
 
-    // API Endpoint for scanning judgments
-    if (url.pathname === '/api/scan') {
-      const query = url.searchParams.get('q') || 'kryptowaluta';
-      const allItems = [];
-      const maxPages = 3; 
-      const pageSize = 40;
+// Proxy API for SAOS (Polish Judgment Database)
+app.get('/api/scan', async (req, res) => {
+  const query = req.query.q || 'kryptowaluta';
+  const SAOS_API_BASE = 'https://www.saos.org.pl/api/judgments';
 
-      try {
-        for (let page = 0; page < maxPages; page++) {
-          const saosUrl = new URL(SAOS_API_BASE);
-          saosUrl.searchParams.set('textContent', query);
-          saosUrl.searchParams.set('pageSize', pageSize.toString());
-          saosUrl.searchParams.set('pageNumber', page.toString());
-          saosUrl.searchParams.set('sortingField', 'JUDGMENT_DATE');
-          saosUrl.searchParams.set('sortingDirection', 'DESC');
-
-          const response = await fetch(saosUrl.toString(), {
-            headers: {
-              'Accept': 'application/json',
-              'User-Agent': 'Mozilla/5.0 (Cynical-OSINT-Terminal/4.0.0)'
-            }
-          });
-
-          if (!response.ok) break;
-
-          const data: any = await response.json();
-          if (data && data.items) {
-            allItems.push(...data.items);
-            if (data.items.length < pageSize) break;
-          } else {
-            break;
-          }
-        }
-
-        const uniqueItems = Array.from(new Map(allItems.map(item => [item.id, item])).values());
-        
-        return new Response(JSON.stringify({ items: uniqueItems }), {
-          headers: { 
-            ...corsHeaders,
-            'Content-Type': 'application/json'
-          }
-        });
-      } catch (error: any) {
-        return new Response(JSON.stringify({ error: 'UPLINK_FLATLINED', details: error.message }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+  try {
+    const response = await axios.get(SAOS_API_BASE, {
+      params: {
+        textContent: query,
+        pageSize: 40,
+        sortingField: 'JUDGMENT_DATE',
+        sortingDirection: 'DESC'
+      },
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Crypto-OSINT-Terminal/12.0'
       }
-    }
-
-    // Serve Static Assets
-    try {
-      return await env.ASSETS.fetch(request);
-    } catch (e) {
-      return new Response("Not Found", { status: 404 });
-    }
+    });
+    res.json(response.data);
+  } catch (error: any) {
+    console.error('API Proxy Error:', error.message);
+    res.status(500).json({ error: 'UPLINK_FLATLINED', details: error.message });
   }
-};
+});
+
+// Serve static files from the current directory
+// In a production environment, you might serve a 'dist' folder
+app.use(express.static(__dirname));
+
+// Fallback to index.html for SPA routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.listen(port, () => {
+  console.log(`OSINT Terminal active at http://localhost:${port}`);
+});

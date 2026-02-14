@@ -15,7 +15,9 @@
     "openai": "^4.85.4",
     "express": "^5.2.1",
     "cors": "^2.8.6",
-    "axios": "^1.13.5"
+    "axios": "^1.13.5",
+    "url": "^0.11.4",
+    "path": "^0.12.7"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
