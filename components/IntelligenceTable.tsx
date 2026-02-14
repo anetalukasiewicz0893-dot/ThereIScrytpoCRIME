@@ -17,9 +17,10 @@ const parseAmount = (amountStr: string): number => {
 };
 
 const isValidSource = (url?: string) => {
-  if (!url) return false;
-  if (url === '#' || url.includes('saos.org.pl/') === false && url.includes('gov.pl') === false && url.includes('http') === false) return false;
-  return true;
+  if (!url || url === '#' || url === 'https://www.saos.org.pl/' || url === 'https://www.saos.org.pl') return false;
+  // A direct judgment usually contains specific keywords or patterns in the URI
+  const isDirectJudgment = url.includes('/judgments/') || url.includes('.gov.pl/') || url.includes('curia.europa.eu');
+  return url.startsWith('http') && isDirectJudgment;
 };
 
 export const IntelligenceTable: React.FC<IntelligenceTableProps> = ({ data, onSave, onDiscard, onDelete, onMove, folders }) => {
@@ -35,6 +36,7 @@ export const IntelligenceTable: React.FC<IntelligenceTableProps> = ({ data, onSa
   }
 
   const handleVerifySource = (signature: string) => {
+    // Generate an OSINT query for Polish court records based on the signature
     const query = encodeURIComponent(`site:.gov.pl OR site:saos.org.pl "wyrok" "${signature}"`);
     window.open(`https://www.google.com/search?q=${query}`, '_blank');
   };
@@ -107,7 +109,7 @@ export const IntelligenceTable: React.FC<IntelligenceTableProps> = ({ data, onSa
                         <button 
                           onClick={() => handleVerifySource(item.signature)}
                           className="text-[9px] font-black uppercase text-amber-600 hover:text-amber-400 transition-all border-b border-amber-900/30 flex items-center gap-1"
-                          title="Source link suspect. Trigger OSINT search."
+                          title="Source link suspect or generic. Trigger manual OSINT search."
                         >
                           Verify via Search
                           <svg className="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
