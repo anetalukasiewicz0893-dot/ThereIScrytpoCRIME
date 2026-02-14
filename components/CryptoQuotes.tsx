@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { GoogleGenAI } from "@google/genai";
+import { getAI, FLASH_MODEL } from '../services/aiClient';
 
 export const CryptoQuotes: React.FC = () => {
   const [quote, setQuote] = useState<string>('Scanning for on-chain wisdom...');
@@ -9,25 +9,19 @@ export const CryptoQuotes: React.FC = () => {
 
   const fetchQuote = async () => {
     setIsLoading(true);
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) {
-      setQuote("No API Key. Wisdom is centralized and currently unavailable.");
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = getAI();
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: 'Provide a very short, powerful, and insightful crypto quote (e.g., from Satoshi Nakamoto, Vitalik Buterin, or general crypto culture wisdom). Format the response as "Quote - Author". Keep the quote under 15 words. Sharp, professional tone.',
+        model: FLASH_MODEL,
+        contents: 'Provide a very short, impactful crypto quote from a famous person (Satoshi, Vitalik, etc.) or industry leader. Format: Quote - Author. Max 15 words.'
       });
-      const text = response.text || 'The root problem with conventional currency is all the trust that’s required to make it work. - Satoshi Nakamoto';
-      const [q, a] = text.split(' - ');
-      setQuote(q?.replace(/"/g, '') || text);
-      setAuthor(a || 'Unknown');
+
+      const text = response.text || 'The Times 03/Jan/2009 Chancellor on brink of second bailout for banks. - Satoshi Nakamoto';
+      const parts = text.split(' - ');
+      setQuote(parts[0]?.replace(/"/g, '').trim() || text);
+      setAuthor(parts[1]?.trim() || 'Historical Record');
     } catch (err) {
-      setQuote('The consensus for wisdom has failed. Try again later.');
+      setQuote('The consensus for wisdom has failed.');
       setAuthor('Network Error');
     } finally {
       setIsLoading(false);
@@ -45,12 +39,12 @@ export const CryptoQuotes: React.FC = () => {
       </div>
       <div className="space-y-4">
         <h3 className="text-xs font-black text-cyan-500 uppercase tracking-[0.4em]">Signal Wisdom</h3>
-        <div className="text-3xl font-black text-white italic leading-relaxed">
+        <div className="text-3xl font-black text-white italic leading-relaxed min-h-[100px] flex items-center justify-center">
           {isLoading ? (
             <div className="flex items-center justify-center gap-3">
-              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce"></div>
-              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+              <div className="w-2.5 h-2.5 bg-cyan-500 rounded-full animate-bounce"></div>
+              <div className="w-2.5 h-2.5 bg-cyan-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+              <div className="w-2.5 h-2.5 bg-cyan-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
             </div>
           ) : `"${quote}"`}
         </div>
@@ -64,7 +58,7 @@ export const CryptoQuotes: React.FC = () => {
           disabled={isLoading}
           className="px-8 py-3 bg-slate-950 border border-slate-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white hover:border-slate-700 transition-all active:scale-95"
         >
-          {isLoading ? 'Confirming...' : 'Next Insight'}
+          {isLoading ? 'Verifying...' : 'Next Insight'}
         </button>
       </div>
     </div>

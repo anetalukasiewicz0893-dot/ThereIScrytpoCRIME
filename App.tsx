@@ -7,7 +7,7 @@ import { TacticalMap } from './components/TacticalMap';
 import { CryptoQuotes } from './components/CryptoQuotes';
 import { Manifesto } from './components/Manifesto';
 import { Readme } from './components/Readme';
-import { searchCryptoCases } from './services/geminiService';
+import { searchCryptoCases } from './services/osintService';
 import { fetchJudgments } from './services/saosService';
 import { GroundedCase, Priority } from './types';
 
@@ -19,25 +19,17 @@ const TITLES = [
   "Ledger Oversight",
   "Blockchain Audit",
   "Asset Recovery",
-  "On-Chain Intel",
-  "Forensic Ledger",
-  "Chain Surveillance",
-  "Ghost Ledger",
-  "Dark Alpha Terminal"
+  "On-Chain Intel"
 ];
 
 const SUBTITLES = [
   "The chain doesn't lie, but forensic analysis reveals the motive.",
   "Indexing the digital ruins of the previous cycles.",
   "Forensic alpha for the sovereign investigator.",
-  "Sifting through the mempool of judicial archives.",
-  "Transparency is a feature, not a bug.",
-  "Mapping the intersection of penal codes and private keys.",
-  "The ledger is immutable; your defense might not be.",
-  "Where cold storage meets cold hard evidence.",
-  "Uncovering the paper trail in a paperless economy.",
-  "The truth is hashed; the interpretation is decentralized."
+  "Sifting through the mempool of judicial archives."
 ];
+
+type ViewType = 'TERMINAL' | 'MAP' | 'FOLDERS' | 'QUOTES' | 'MANIFESTO' | 'README';
 
 function App() {
   const [cases, setCases] = useState<GroundedCase[]>([]);
@@ -45,7 +37,7 @@ function App() {
   const [isScanning, setIsScanning] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<'TERMINAL' | 'MAP' | 'FOLDERS' | 'QUOTES' | 'MANIFESTO' | 'README'>('TERMINAL');
+  const [view, setView] = useState<ViewType>('TERMINAL');
   const [subtitle, setSubtitle] = useState('');
   const [title, setTitle] = useState('');
   
@@ -54,22 +46,28 @@ function App() {
   const [filterFolder, setFilterFolder] = useState<string>('ALL');
 
   useEffect(() => {
-    // Generate new title and subtitle on every mount/refresh
     setTitle(TITLES[Math.floor(Math.random() * TITLES.length)]);
     setSubtitle(SUBTITLES[Math.floor(Math.random() * SUBTITLES.length)]);
     
-    const savedData = localStorage.getItem('osint_ledger_v10');
+    const savedData = localStorage.getItem('osint_ledger_v11');
     if (savedData) setCases(JSON.parse(savedData));
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('osint_ledger_v10', JSON.stringify(cases));
+    localStorage.setItem('osint_ledger_v11', JSON.stringify(cases));
   }, [cases]);
 
   const performAlphaHarvest = async (isFresh: boolean = false) => {
+    // Standard API key check - using process.env.API_KEY as provided by platform
+    const hasKey = !!process.env.API_KEY;
+    if (!hasKey) {
+      setError("CRITICAL ERROR: API_KEY is missing from environment secrets.");
+      return;
+    }
+
     setIsScanning(true);
     setError(null);
-    setStatus(isFresh ? 'PURGING LOCAL CACHE. RE-INDEXING THE ARCHIVE...' : 'HUNTING FOR FRESH SIGNALS...');
+    setStatus(isFresh ? 'PURGING LOCAL CACHE. RE-ESTABLISHING UPLINK...' : 'SCANNING FOR NEW SIGNATURES...');
     
     if (isFresh) setCases(prev => prev.filter(c => c.isSaved));
 
@@ -79,8 +77,8 @@ function App() {
       
       const [osintResult, saosResult] = await Promise.all([
         searchCryptoCases(activeSigs, discardedSigs),
-        fetchJudgments().catch((err) => {
-          console.warn("Backend unavailable, relying on OSINT fallback", err);
+        fetchJudgments().catch((e) => {
+          console.error("Judgments fetch failed", e);
           return [];
         })
       ]);
@@ -91,16 +89,16 @@ function App() {
         court: sj.courtType,
         date: sj.judgmentDate,
         isCryptoCrime: true,
-        summary: sj.analysis?.summary || 'Standard judicial protocol identified.',
-        amount: sj.analysis?.amount || '0 PLN',
-        article: sj.analysis?.article || 'KK',
+        summary: sj.analysis?.summary || 'Automated classification pending.',
+        amount: sj.analysis?.amount || 'N/A',
+        article: sj.analysis?.article || 'Unknown',
         priority: (sj.analysis?.priority as Priority) || Priority.LOW,
         sourceUrl: `https://www.saos.org.pl/judgments/${sj.id}`,
         region: 'Poland',
         folder: 'Uncategorized',
         isSaved: false,
         isDiscarded: false,
-        location: { lat: 52.2297, lng: 21.0122, city: 'Warsaw' }
+        location: { lat: 52.2297 + (Math.random() - 0.5) * 5, lng: 21.0122 + (Math.random() - 0.5) * 5, city: 'Scanning...' }
       }));
 
       const incoming = [...osintResult.cases, ...mappedSaosCases].filter(nc => 
@@ -108,30 +106,12 @@ function App() {
       );
 
       setCases(prev => [...incoming, ...prev]);
-      setStatus(`HARVEST COMPLETE. ${incoming.length} ENTRIES ADDED TO THE LEDGER.`);
+      setStatus(`UPLINK SYNCED. ${incoming.length} NEW NODES FOUND.`);
     } catch (err: any) {
-      setError("Uplink failed. Check if backend bridge is active or network is stable.");
+      setError(`UPLINK FAILURE: ${err.message || 'Check API Configuration'}`);
     } finally {
       setIsScanning(false);
       setTimeout(() => setStatus(''), 5000);
-    }
-  };
-
-  const handleExport = (type: 'PDF' | 'DRIVE' | 'EMAIL') => {
-    if (filterFolder === 'ALL') {
-      setStatus("SELECT A SPECIFIC FOLDER TO EXPORT THIS DATA.");
-      return;
-    }
-
-    if (type === 'PDF') {
-      setStatus(`GENERATING DOSSIER FOR ${filterFolder}...`);
-      setTimeout(() => window.print(), 800);
-    } else if (type === 'DRIVE') {
-      setStatus(`SYNCING ${filterFolder} TO GOOGLE DRIVE...`);
-      setTimeout(() => setStatus("DOSSIER SYNCED. SECURE STORAGE CONFIRMED."), 2000);
-    } else if (type === 'EMAIL') {
-      setStatus(`DISPATCHING ENCRYPTED DATA FOR ${filterFolder}...`);
-      setTimeout(() => setStatus("EMAIL DISPATCHED. CHECK THE PGP SECURED INBOX."), 2000);
     }
   };
 
@@ -146,115 +126,105 @@ function App() {
   };
 
   const filteredCases = useMemo(() => {
-    return cases.filter(c => !c.isDiscarded && (filterFolder === 'ALL' || c.folder === filterFolder))
-      .filter(c => {
-        const matchSearch = searchTerm === '' || 
-          `${c.signature} ${c.summary} ${c.court} ${c.article}`.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchPriority = filterPriority === 'ALL' || c.priority === filterPriority;
-        return matchSearch && matchPriority;
-      });
-  }, [cases, filterFolder, searchTerm, filterPriority]);
+    return cases.filter(c => {
+      const matchesSearch = c.signature.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           c.summary.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesPriority = filterPriority === 'ALL' || (c.priority as string) === filterPriority;
+      const matchesFolder = filterFolder === 'ALL' || c.folder === filterFolder;
+      return matchesSearch && matchesPriority && matchesFolder && !c.isDiscarded;
+    });
+  }, [cases, searchTerm, filterPriority, filterFolder]);
 
-  const titleParts = title ? title.split(' ') : ['Crypto', 'Intelligence'];
+  const stats = useMemo(() => ({
+    total: cases.length,
+    analyzed: cases.filter(c => c.isCryptoCrime).length,
+    cryptoCount: cases.filter(c => c.isCryptoCrime).length,
+    highPriority: cases.filter(c => c.priority === Priority.HIGH).length
+  }), [cases]);
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-300 antialiased selection:bg-cyan-500 selection:text-black pb-20 print:bg-white print:text-black">
+    <div className="min-h-screen bg-slate-950 text-slate-300 font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
       <div className="scanline print:hidden"></div>
-      <TerminalHeader />
-
-      <main className="max-w-7xl mx-auto px-6 mt-12 space-y-12">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-10 print:hidden">
-          <div className="space-y-6 flex-1">
-             <div className="flex flex-wrap gap-2 md:gap-4">
-                {['TERMINAL', 'MAP', 'FOLDERS', 'QUOTES', 'MANIFESTO', 'README'].map(v => (
-                  <button key={v} onClick={() => setView(v as any)} className={`px-4 md:px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border transition-all ${view === v ? 'bg-cyan-500/10 border-cyan-500 text-cyan-400' : 'border-slate-800 text-slate-600 hover:text-white'}`}>{v}</button>
-                ))}
-             </div>
-             <h2 className="text-7xl font-black text-white trm-heading uppercase leading-[0.85]">
-               {titleParts[0]} <br/><span className="text-cyan-500">{titleParts.slice(1).join(' ')}</span>
-             </h2>
-             <p className="text-slate-500 max-w-2xl font-medium italic">
-               {subtitle}
-             </p>
+      <TerminalHeader searchTerm={searchTerm} onSearchChange={setSearchTerm} />
+      
+      <main className="max-w-7xl mx-auto px-6 py-10 space-y-12">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="space-y-2">
+            <h2 className="text-4xl font-black text-white tracking-tighter uppercase">{title}</h2>
+            <p className="text-slate-500 font-medium tracking-wide italic">{subtitle}</p>
           </div>
-
-          <div className="flex flex-wrap gap-4 w-full lg:w-auto">
-             <button onClick={() => performAlphaHarvest(true)} disabled={isScanning} className="px-10 py-5 bg-white text-black rounded-xl font-black text-xs uppercase tracking-widest hover:bg-cyan-400 hover:text-black transition-all shadow-2xl active:scale-95 disabled:opacity-50 flex items-center gap-3">
-                {isScanning ? 'Syncing...' : 'Live Harvest'}
+          <div className="flex gap-4">
+             <button 
+               onClick={() => performAlphaHarvest()}
+               disabled={isScanning}
+               className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isScanning ? 'bg-slate-900 text-slate-700 cursor-not-allowed' : 'bg-cyan-600 text-white hover:bg-cyan-500 shadow-[0_0_20px_rgba(8,145,178,0.3)]'}`}
+             >
+               {isScanning ? 'Syncing...' : 'Live Harvest'}
+             </button>
+             <button 
+               onClick={() => setView(view === 'TERMINAL' ? 'MAP' : 'TERMINAL')}
+               className="px-8 py-3 bg-slate-900 border border-slate-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all"
+             >
+               {view === 'TERMINAL' ? 'Tactical Map' : 'Terminal UI'}
              </button>
           </div>
         </div>
 
-        {status && <div className="py-4 px-6 bg-cyan-500/5 border border-cyan-500/20 rounded-xl text-[10px] font-black text-cyan-400 uppercase tracking-widest animate-pulse print:hidden">STATUS: {status}</div>}
-        {error && <div className="py-4 px-6 bg-rose-500/5 border border-rose-500/20 rounded-xl text-[10px] font-black text-rose-500 uppercase tracking-widest print:hidden">ERROR: {error}</div>}
+        <StatCards {...stats} />
 
-        {view === 'TERMINAL' && (
-          <div className="space-y-10">
-            {filterFolder !== 'ALL' && (
-              <div className="flex flex-wrap gap-4 print:hidden animate-in fade-in slide-in-from-top-4 duration-500">
-                <button onClick={() => handleExport('PDF')} className="px-6 py-3 bg-slate-900 border border-slate-800 rounded-xl text-[10px] font-black text-cyan-500 uppercase tracking-widest hover:bg-cyan-500 hover:text-black transition-all">Save PDF Dossier</button>
-                <button onClick={() => handleExport('DRIVE')} className="px-6 py-3 bg-slate-900 border border-slate-800 rounded-xl text-[10px] font-black text-emerald-500 uppercase tracking-widest hover:bg-emerald-500 hover:text-black transition-all">Upload to Drive</button>
-                <button onClick={() => handleExport('EMAIL')} className="px-6 py-3 bg-slate-900 border border-slate-800 rounded-xl text-[10px] font-black text-rose-500 uppercase tracking-widest hover:bg-rose-500 hover:text-black transition-all">Email Intelligence</button>
-              </div>
-            )}
-            
-            <div className="print:hidden">
-              <StatCards 
-                total={cases.length} 
-                analyzed={cases.filter(c => !c.isDiscarded).length}
-                cryptoCount={cases.filter(c => c.isSaved).length} 
-                highPriority={cases.filter(c => c.priority === Priority.HIGH && !c.isDiscarded).length} 
-              />
+        <div className="flex gap-4 border-b border-slate-900 pb-2 overflow-x-auto whitespace-nowrap">
+          {(['TERMINAL', 'MAP', 'FOLDERS', 'QUOTES', 'MANIFESTO', 'README'] as ViewType[]).map(v => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`pb-4 px-4 text-[10px] font-black uppercase tracking-widest transition-all ${view === v ? 'text-cyan-500 border-b-2 border-cyan-500' : 'text-slate-600 hover:text-slate-400'}`}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+
+        {error && (
+          <div className="p-8 bg-rose-500/10 border border-rose-500/20 rounded-3xl space-y-4 animate-in fade-in zoom-in-95 duration-300">
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <h4 className="text-sm font-black text-rose-500 uppercase tracking-widest">Protocol Error</h4>
             </div>
+            <p className="text-xs text-rose-400 font-bold uppercase tracking-widest leading-relaxed">
+              {error} <br/> 
+              <span className="text-[10px] opacity-60 text-slate-400">Please verify the signal connection and environment parameters.</span>
+            </p>
+          </div>
+        )}
 
-            <div className="bg-slate-900/40 border border-slate-800/60 p-8 rounded-[2rem] flex flex-col md:flex-row gap-8 items-center print:hidden">
-              <input type="text" placeholder="FILTER THE LEDGER..." className="flex-1 bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-[12px] font-black uppercase tracking-widest outline-none focus:border-cyan-500 transition-colors" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-              <div className="flex gap-4">
-                <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-[10px] font-black uppercase tracking-widest outline-none">
-                  <option value="ALL">All Risk</option>
-                  <option value={Priority.HIGH}>Critical</option>
-                  <option value={Priority.MEDIUM}>Suspect</option>
-                </select>
-                <select value={filterFolder} onChange={e => setFilterFolder(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-[10px] font-black uppercase tracking-widest outline-none">
-                  <option value="ALL">All Vaults</option>
-                  {folders.map(f => <option key={f} value={f}>{f}</option>)}
-                </select>
-              </div>
-            </div>
+        {status && (
+          <div className="text-[10px] font-mono text-cyan-500 animate-pulse tracking-widest uppercase py-2">
+            >> {status}
+          </div>
+        )}
 
+        <div className="space-y-12">
+          {view === 'TERMINAL' && (
             <IntelligenceTable 
-               data={filteredCases} 
-               onSave={id => handleAction(id, 'SAVE')}
-               onDiscard={id => handleAction(id, 'DISCARD')}
-               onMove={(id, f) => handleAction(id, 'MOVE', f)}
-               folders={folders}
+              data={filteredCases} 
+              onSave={(id) => handleAction(id, 'SAVE')}
+              onDiscard={(id) => handleAction(id, 'DISCARD')}
+              onMove={(id, folder) => handleAction(id, 'MOVE', folder)}
+              folders={folders}
             />
-          </div>
-        )}
-
-        {view === 'MAP' && <TacticalMap cases={cases.filter(c => !c.isDiscarded)} />}
-
-        {view === 'FOLDERS' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 print:hidden">
-            {folders.map(f => (
-              <div key={f} onClick={() => { setFilterFolder(f); setView('TERMINAL'); }} className="p-10 bg-slate-900/30 border border-slate-800/60 rounded-[2.5rem] space-y-6 hover:border-cyan-500/40 transition-all cursor-pointer group shadow-xl">
-                 <div className="text-2xl font-black text-white group-hover:text-cyan-400 transition-colors uppercase tracking-tight">{f}</div>
-                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{cases.filter(c => c.folder === f).length} Records Archived</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {view === 'QUOTES' && <CryptoQuotes />}
-        {view === 'MANIFESTO' && <Manifesto />}
-        {view === 'README' && <Readme />}
+          )}
+          {view === 'MAP' && <TacticalMap cases={filteredCases} />}
+          {view === 'QUOTES' && <CryptoQuotes />}
+          {view === 'MANIFESTO' && <Manifesto />}
+          {view === 'README' && <Readme />}
+        </div>
       </main>
 
-      <footer className="fixed bottom-0 left-0 w-full bg-[#020617]/95 border-t border-slate-900/60 p-6 text-[10px] font-black text-slate-600 flex justify-between items-center px-12 uppercase tracking-widest z-50 print:hidden">
-        <div>Registry: <span className="text-slate-300">INTEL-OSINT v10.0</span></div>
+      <footer className="fixed bottom-0 left-0 w-full bg-[#020617]/95 border-t border-slate-900/60 p-4 text-[9px] font-black text-slate-600 flex justify-between items-center px-12 uppercase tracking-widest z-50 print:hidden">
+        <div>Registry: OSINT-INTEL v11.0.4</div>
         <div className="flex items-center gap-3">
-          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_15px_cyan]"></span>
-          System Online // Verified Data Stream
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_10px_cyan]"></span>
+          Tactical Link Established
         </div>
       </footer>
     </div>

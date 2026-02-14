@@ -1,5 +1,7 @@
 {
-  "name": "Copy of CryptoCrime OSINT Terminal",
-  "description": "A professional law enforcement-style intelligence dashboard for scanning and analyzing Polish court judgments related to cryptocurrency crimes using Gemini AI.",
-  "requestFramePermissions": []
+  "name": "CryptoCrime OSINT Terminal",
+  "description": "A professional law enforcement-style intelligence dashboard for scanning and analyzing Polish court judgments related to cryptocurrency crimes using OpenAI.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
 }

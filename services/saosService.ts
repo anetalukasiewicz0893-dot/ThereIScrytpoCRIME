@@ -1,55 +1,58 @@
-
-import { GoogleGenAI, Type } from "@google/genai";
+import axios from 'axios';
+import { getAI, FLASH_MODEL } from './aiClient';
+import { Type } from "@google/genai";
 import { CourtJudgment, AnalysisStatus, AIAnalysis, Priority } from '../types';
 
+/**
+ * Fetches and analyzes court judgments from the SAOS API using Gemini.
+ */
 export const fetchJudgments = async (query: string = 'waluta wirtualna kryptowaluta'): Promise<CourtJudgment[]> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API Key missing. The AI has zero alpha.");
-
-  const ai = new GoogleGenAI({ apiKey });
-
   try {
-    const response = await fetch(`http://localhost:3000/api/scan?q=${encodeURIComponent(query)}`);
-    if (!response.ok) throw new Error(`Uplink Error: ${response.status}`);
+    // We use a relative path for the internal proxy API. 
+    // If the environment requires an absolute URL, we prepend the origin.
+    const origin = typeof window !== 'undefined' && window.location ? window.location.origin : '';
+    const apiEndpoint = `${origin}/api/scan?q=${encodeURIComponent(query)}`;
+    
+    const response = await axios.get(apiEndpoint);
+    const rawItems = response.data.items || [];
 
-    const data = await response.json();
-    const rawItems = data.items || [];
-
-    // Massive increase: analyzing up to 100 cases per harvest for deep coverage
-    const analyzedItems = await Promise.all(rawItems.slice(0, 100).map(async (item: any) => {
+    const ai = getAI();
+    
+    // Analyze high-relevance records using Gemini
+    const analyzedPromises = rawItems.slice(0, 8).map(async (item: any) => {
       try {
         const textToAnalyze = (item.textContent || '').substring(0, 15000);
         if (!textToAnalyze) return null;
 
-        const genResponse = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: `As a professional CT (Crypto Twitter) forensic analyst with a witty, slightly cynical edge, dissect this Polish court judgment. 
-          Is this a "forced exit liquidity" event? (Theft, Fraud, Art 286 KK, Art 299 KK - money laundering).
-          
-          JUDGMENT DATA:
-          ${textToAnalyze}
-          
-          Return JSON: { "isCryptoCrime": boolean, "summary": "1-sentence professional but sharp Polish summary", "amount": "kwota w PLN/BTC", "article": "Art. KK", "priority": "High/Medium/Low" }`,
+        const response = await ai.models.generateContent({
+          model: FLASH_MODEL,
+          contents: `Analyze this Polish court judgment for cryptocurrency crime relevance.
+            JUDGMENT: ${textToAnalyze}`,
           config: {
+            systemInstruction: 'You are a Polish legal forensic expert. Analyze court judgments for cryptocurrency crime relevance. Return valid JSON only.',
             responseMimeType: "application/json",
             responseSchema: {
               type: Type.OBJECT,
               properties: {
                 isCryptoCrime: { type: Type.BOOLEAN },
-                summary: { type: Type.STRING },
-                amount: { type: Type.STRING },
-                article: { type: Type.STRING },
-                priority: { type: Type.STRING, enum: ["High", "Medium", "Low"] }
+                summary: { type: Type.STRING, description: "1-sentence Polish summary" },
+                amount: { type: Type.STRING, description: "Value in PLN/BTC" },
+                article: { type: Type.STRING, description: "Penal code article (Art. KK)" },
+                priority: { type: Type.STRING, enum: ["High", "Medium", "Low"] },
               },
               required: ["isCryptoCrime", "summary", "amount", "article", "priority"]
             }
           }
         });
 
-        const analysis = JSON.parse(genResponse.text || "{}") as AIAnalysis;
-        if (!analysis.isCryptoCrime) return null;
+        const content = response.text;
+        if (!content) return null;
+        
+        const analysis: AIAnalysis = JSON.parse(content);
+        
+        if (!analysis || !analysis.isCryptoCrime) return null;
 
-        return {
+        const result: CourtJudgment = {
           id: item.id,
           courtCases: (item.courtCases || []).map((c: any) => c.caseNumber),
           judgmentDate: item.judgmentDate || 'Unknown',
@@ -58,14 +61,17 @@ export const fetchJudgments = async (query: string = 'waluta wirtualna kryptowal
           analysis: analysis,
           status: AnalysisStatus.COMPLETED
         };
+        return result;
       } catch (err) {
+        console.error("AI Analysis failed for item", item.id, err);
         return null;
       }
-    }));
+    });
 
-    return analyzedItems.filter((item): item is CourtJudgment => item !== null);
+    const results = await Promise.all(analyzedPromises);
+    return results.filter((res): res is CourtJudgment => res !== null);
   } catch (error) {
-    console.error('Forensic Scan Failure:', error);
+    console.error('Forensic Pipeline Error:', error);
     throw error;
   }
 };
