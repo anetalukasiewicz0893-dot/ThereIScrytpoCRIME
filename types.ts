@@ -26,7 +26,15 @@ export interface GroundedCase extends AIAnalysis {
   date: string;
   sourceUrl: string;
   region: 'Poland' | 'European Union';
-  euContext?: string; // Connection to EU directives or other countries
+  euContext?: string;
+  folder?: string;
+  isDiscarded?: boolean;
+  isSaved?: boolean;
+  location?: {
+    lat: number;
+    lng: number;
+    city: string;
+  };
 }
 
 export interface CourtJudgment {

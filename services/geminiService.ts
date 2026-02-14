@@ -2,48 +2,43 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { GroundedCase } from "../types";
 
-export const searchCryptoCases = async (existingSignatures: string[] = []): Promise<{ cases: GroundedCase[]; sources: { title: string; uri: string }[] }> => {
+export const searchCryptoCases = async (
+  existingSignatures: string[] = [], 
+  discardedSignatures: string[] = []
+): Promise<{ cases: GroundedCase[]; sources: { title: string; uri: string }[] }> => {
   const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API Key missing");
-  }
+  if (!apiKey) throw new Error("API Key missing");
 
   const ai = new GoogleGenAI({ apiKey });
+  
+  // Combine all signatures that should not be returned again
+  const excludeList = [...existingSignatures, ...discardedSignatures].slice(0, 50).join(', ');
   
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: `PERFORM AN EXHAUSTIVE FORENSIC SEARCH: 
-      Identify all landmark and relevant judicial rulings where Cryptocurrency (waluty wirtualne/kryptowaluty) intersects with the Polish Penal Code (Kodeks Karny - KK) and equivalent European Union criminal statutes.
+      contents: `PERFORM A MASSIVE ARCHIVAL OSINT SEARCH. 
+      Identify judicial rulings where Cryptocurrency intersects with Polish/EU Penal Codes (Art 286, 299, 287 KK).
       
-      SPECIFIC FOCUS:
-      - Polish Penal Code (KK) Articles: Art. 286 (Fraud), Art. 299 (Money Laundering), Art. 287 (Computer Fraud), Art. 278 (Theft).
-      - European Union: Directives 2018/843 (AMLD5) and 2015/849 (AMLD4) enforcement, plus ECLI records.
-      
-      SCOPE: 
-      Find at least 50+ distinct cases. Do not limit to high-profile only; include granular judicial precedents from common courts (Sądy Powszechne) and the Court of Justice of the EU (CJEU).
-      
-      EXCLUDE signatures: ${existingSignatures.join(', ')}.
+      CRITICAL INSTRUCTIONS:
+      1. Target 40-60 unique results per request.
+      2. Extract specific city and approximate GPS coordinates (latitude, longitude) for each court.
+      3. ABSOLUTELY EXCLUDE these signatures already in database: [${excludeList}].
+      4. Ensure sourceUrl is a valid link to a legal database or news report.
 
-      RISK CLASSIFICATION LOGIC:
-      - HIGH: Organized crime, systemic AML (Art. 299 KK), value > 500,000 PLN/EUR, or complex cross-border obfuscation.
-      - MEDIUM: Isolated Art. 286 KK (Fraud) cases, phishing campaigns, or tax evasion > 100,000 PLN.
-      - LOW: Minor thefts, wallet disputes, or non-compliance without malicious intent.
-
-      Return a JSON object with a "cases" array:
-      - signature: string (File reference)
-      - court: string (Court and Division)
+      Return ONLY JSON with a "cases" array:
+      - signature: string (e.g., II AKa 12/23)
+      - court: string
       - date: string (YYYY-MM-DD)
       - isCryptoCrime: boolean
-      - summary: string (1-sentence professional legal summary in English)
-      - amount: string (Estimated financial impact)
-      - article: string (The specific KK Article or EU Directive)
+      - summary: string (Deep 1-sentence analysis)
+      - amount: string
+      - article: string
       - priority: "High" | "Medium" | "Low"
-      - sourceUrl: string (Direct URL to ruling)
+      - sourceUrl: string
       - region: "Poland" | "European Union"
-      - euContext: string (Explain how this relates to European criminal law or cross-border enforcement)
-
-      Only return the JSON.`,
+      - euContext: string
+      - location: { lat: number, lng: number, city: string }`,
       config: {
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
@@ -65,9 +60,18 @@ export const searchCryptoCases = async (existingSignatures: string[] = []): Prom
                   priority: { type: Type.STRING, enum: ["High", "Medium", "Low"] },
                   sourceUrl: { type: Type.STRING },
                   region: { type: Type.STRING, enum: ["Poland", "European Union"] },
-                  euContext: { type: Type.STRING }
+                  euContext: { type: Type.STRING },
+                  location: {
+                    type: Type.OBJECT,
+                    properties: {
+                      lat: { type: Type.NUMBER },
+                      lng: { type: Type.NUMBER },
+                      city: { type: Type.STRING }
+                    },
+                    required: ["lat", "lng", "city"]
+                  }
                 },
-                required: ["signature", "court", "date", "summary", "priority", "sourceUrl", "region"]
+                required: ["signature", "court", "date", "summary", "priority", "sourceUrl", "location"]
               }
             }
           },
@@ -76,9 +80,7 @@ export const searchCryptoCases = async (existingSignatures: string[] = []): Prom
       }
     });
 
-    const text = response.text || "{}";
-    const data = JSON.parse(text);
-    
+    const data = JSON.parse(response.text || "{}");
     const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
       title: chunk.web?.title || "Judicial Archive Record",
       uri: chunk.web?.uri || "#"
@@ -86,12 +88,15 @@ export const searchCryptoCases = async (existingSignatures: string[] = []): Prom
 
     const cases = (data.cases || []).map((c: any) => ({
       ...c,
-      id: `ledger-${c.signature}-${Date.now()}`
+      id: `ledger-${c.signature}-${Date.now()}`,
+      isSaved: false,
+      isDiscarded: false,
+      folder: 'Uncategorized'
     }));
 
     return { cases, sources };
   } catch (error) {
-    console.error("Ledger Search Error:", error);
+    console.error("OSINT Ledger Search Error:", error);
     throw error;
   }
 };
