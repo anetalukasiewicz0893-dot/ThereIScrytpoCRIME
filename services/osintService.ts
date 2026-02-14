@@ -13,10 +13,10 @@ export const searchCryptoCases = async (
   try {
     const response = await ai.models.generateContent({
       model: currentModel,
-      contents: [{ parts: [{ text: `Search for real Polish and European Union court records or legal news involving cryptocurrency crimes (theft, fraud, laundering). Exclude these signatures: [${excludeList}]. Find 10 unique cases.` }] }],
+      contents: `Search for real Polish and European Union court records or legal news involving cryptocurrency crimes (theft, fraud, laundering). Exclude these signatures: [${excludeList}]. Find 10 unique cases. Return only valid JSON.`,
       config: {
         tools: [{ googleSearch: {} }],
-        systemInstruction: 'You are a professional OSINT researcher. Find real court cases using search. Return only valid JSON.',
+        systemInstruction: 'You are a professional OSINT researcher. Find real court cases using search. Return ONLY valid JSON that matches the provided schema.',
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -55,7 +55,7 @@ export const searchCryptoCases = async (
       }
     });
 
-    const content = response.text; // Accessing property, not method
+    const content = response.text; 
     const parsedData = content ? JSON.parse(content) : { cases: [] };
 
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];

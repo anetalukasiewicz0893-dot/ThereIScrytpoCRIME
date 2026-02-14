@@ -9,6 +9,7 @@ let isProExhausted = false;
 
 /**
  * Standard initialization as per guidelines.
+ * Uses process.env.API_KEY injected by the environment.
  */
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 

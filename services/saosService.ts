@@ -13,10 +13,10 @@ export const fetchJudgments = async (
   try {
     const response = await ai.models.generateContent({
       model: currentModel,
-      contents: [{ parts: [{ text: `Search for real Polish court judgments related to cryptocurrency. Exclude: [${excludeStr}].` }] }],
+      contents: `Search for real Polish court judgments related to cryptocurrency crimes. Search query: ${query}. Exclude: [${excludeStr}]. Return only valid JSON.`,
       config: {
         tools: [{ googleSearch: {} }],
-        systemInstruction: 'You are a legal OSINT expert. Find real Polish court cases. Output valid JSON only.',
+        systemInstruction: 'You are a legal OSINT expert. Find real Polish court cases using Google Search. Output valid JSON ONLY matching the requested schema.',
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -44,7 +44,7 @@ export const fetchJudgments = async (
       }
     });
 
-    const content = response.text; // Property access
+    const content = response.text;
     const parsedData = content ? JSON.parse(content) : { judgments: [] };
 
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
