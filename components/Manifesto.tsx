@@ -7,7 +7,7 @@ export const Manifesto: React.FC = () => {
       {/* Background Frame of Bitcoins */}
       <div className="absolute inset-0 pointer-events-none opacity-5 overflow-hidden -z-10">
         <div className="grid grid-cols-12 gap-8 h-full w-full">
-          {Array.from({ length: 600 }).map((_, i) => (
+          {Array.from({ length: 800 }).map((_, i) => (
             <div key={i} className="flex items-center justify-center">
               <svg className="w-10 h-10 text-yellow-500/50" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm1.611 14.283c-.354.14-.852.257-1.424.342-.513.076-1.12.128-1.851.154l-.427 1.55h-.915l.421-1.52c-.229.006-.459.013-.69.021l-.421 1.52h-.915l.427-1.55c-.474.016-.948.04-1.42.073l.115.41h-.645l-.11-.403c-.328-.023-.623-.049-.885-.078-.17-.019-.286-.057-.348-.112-.062-.055-.084-.131-.066-.226l.483-1.748c.018-.095.064-.176.139-.244.075-.068.167-.107.275-.116.03-.002.059-.004.088-.004h.156l-.106.386c.207.014.383.05.529.111.146.061.21.162.192.304l-.472 1.708c-.018.095.011.153.088.174.077.021.2.032.368.032.22 0 .503.011.849.034l.436-1.578c.23-.008.46-.015.688-.023l-.434 1.57h.915l.424-1.53c.231-.008.461-.015.69-.022l-.424 1.53h.915l.436-1.578c.45-.015.845-.038 1.185-.068.513-.044.912-.132 1.198-.263.286-.131.503-.314.652-.549.149-.235.215-.526.198-.872-.016-.254-.082-.486-.197-.696a1.59 1.59 0 00-.518-.535 1.95 1.95 0 00-.73-.298c.31-.096.56-.247.747-.453s.314-.461.381-.766c.068-.305.07-.638.006-.998-.063-.448-.225-.826-.486-1.134-.26-.308-.616-.541-1.066-.699-.451-.158-.999-.244-1.644-.258-.291-.006-.63-.008-1.017-.006l.42-1.52h.915l-.424 1.53c.23-.008.46-.015.691-.023l-.424 1.53h.915l.42-1.52h.915l-.427 1.55c.618-.021 1.163-.006 1.636.046.613.067 1.107.214 1.48.441.373.227.64.555.8.983.16.428.196.953.109 1.574-.087.621-.309 1.126-.666 1.515-.357.389-.838.641-1.442.756z" />
@@ -123,29 +123,45 @@ export const Manifesto: React.FC = () => {
             <p>
               It is possible to verify payments without running a full network node. A user only needs to keep a copy of the block headers of the longest proof-of-work chain, which he can get by querying network nodes until he's convinced he has the longest chain.
             </p>
+            <p>
+              He can't check the transaction for himself, but by linking it to a place in the chain, he can see that a network node has accepted it, and blocks added after it further confirm the network has accepted it.
+            </p>
           </section>
 
           <section className="space-y-6">
             <h3 className="text-white font-black uppercase tracking-widest text-sm border-l-2 border-yellow-500 pl-4">10. Combining and Splitting Value</h3>
             <p>
-              Although it would be possible to handle coins individually, it would be unwieldy to make a separate transaction for every cent in a transfer. To allow value to be split and combined, transactions contain multiple inputs and outputs.
+              Although it would be possible to handle coins individually, it would be unwieldy to make a separate transaction for every cent in a transfer. To allow value to be split and combined, transactions contain multiple inputs and outputs. Normally there will be either a single input from a larger previous transaction or multiple inputs combining smaller amounts, and at most two outputs: one for the payment, and one returning the change, if any, back to the sender.
             </p>
           </section>
 
           <section className="space-y-6">
             <h3 className="text-white font-black uppercase tracking-widest text-sm border-l-2 border-yellow-500 pl-4">11. Privacy</h3>
             <p>
-              The traditional banking model achieves a level of privacy by limiting access to information to the parties involved and the trusted third party. The necessity to announce all transactions publicly precludes this method, but privacy can still be maintained by breaking the flow of information in another place: by keeping public keys anonymous.
+              The traditional banking model achieves a level of privacy by limiting access to information to the parties involved and the trusted third party. The necessity to announce all transactions publicly precludes this method, but privacy can still be maintained by breaking the flow of information in another place: by keeping public keys anonymous. The public can see that someone is sending an amount to someone else, but without information linking the transaction to anyone.
+            </p>
+            <p>
+              As an additional firewall, a new key pair should be used for each transaction to keep them from being linked to a common owner.
             </p>
           </section>
 
           <section className="space-y-6">
-            <h3 className="text-white font-black uppercase tracking-widest text-sm border-l-2 border-yellow-500 pl-4">12. Conclusion</h3>
+            <h3 className="text-white font-black uppercase tracking-widest text-sm border-l-2 border-yellow-500 pl-4">12. Calculations</h3>
+            <p>
+              We consider the scenario of an attacker trying to generate an alternate chain faster than the honest chain. Even if this is accomplished, it does not open the system to arbitrary changes, such as creating value out of thin air or taking money that never belonged to the attacker.
+            </p>
+            <p>
+              The probability of an attacker catching up from a given deficit is analogous to a Gambler's Ruin problem. Suppose a gambler with unlimited credit starts at a deficit and plays potentially an infinite number of trials to try to reach breakeven.
+            </p>
+          </section>
+
+          <section className="space-y-6">
+            <h3 className="text-white font-black uppercase tracking-widest text-sm border-l-2 border-yellow-500 pl-4">13. Conclusion</h3>
             <p>
               We have proposed a system for electronic transactions without relying on trust. We started with the usual framework of coins made from digital signatures, which provides strong control of ownership, but is incomplete without a way to prevent double-spending.
             </p>
             <p>
-              To solve this, we proposed a peer-to-peer network using proof-of-work to record a public history of transactions that quickly becomes computationally impractical for an attacker to change if honest nodes control a majority of CPU power. The network is robust in its unstructured simplicity.
+              To solve this, we proposed a peer-to-peer network using proof-of-work to record a public history of transactions that quickly becomes computationally impractical for an attacker to change if honest nodes control a majority of CPU power. The network is robust in its unstructured simplicity. Nodes work all at once with little coordination. They do not need to be identified, since messages are not routed to any particular place and only need to be delivered on a best effort basis.
             </p>
           </section>
         </article>
@@ -153,6 +169,7 @@ export const Manifesto: React.FC = () => {
         <footer className="pt-20 text-center space-y-4 border-t border-slate-900">
           <div className="text-[10px] font-black text-yellow-500 uppercase tracking-widest">End of Protocol v1.0 // Genesis Block Root</div>
           <p className="text-[8px] text-slate-700 font-mono">HASH: 000000000019D6689C085AE165831E934FF763AE46A2A6C172B3F1B60A8CE26F</p>
+          <div className="pt-4 text-[7px] text-slate-800 uppercase tracking-widest">In Code We Trust</div>
         </footer>
       </div>
     </div>

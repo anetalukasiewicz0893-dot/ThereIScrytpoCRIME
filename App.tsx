@@ -20,7 +20,10 @@ const TITLES = [
   "Blockchain Audit",
   "Asset Recovery",
   "On-Chain Intel",
-  "Forensic Ledger"
+  "Forensic Ledger",
+  "Chain Surveillance",
+  "Ghost Ledger",
+  "Dark Alpha Terminal"
 ];
 
 const SUBTITLES = [
@@ -32,7 +35,8 @@ const SUBTITLES = [
   "Mapping the intersection of penal codes and private keys.",
   "The ledger is immutable; your defense might not be.",
   "Where cold storage meets cold hard evidence.",
-  "Uncovering the paper trail in a paperless economy."
+  "Uncovering the paper trail in a paperless economy.",
+  "The truth is hashed; the interpretation is decentralized."
 ];
 
 function App() {
@@ -43,7 +47,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<'TERMINAL' | 'MAP' | 'FOLDERS' | 'QUOTES' | 'MANIFESTO' | 'README'>('TERMINAL');
   const [subtitle, setSubtitle] = useState('');
-  const [title, setTitle] = useState('Crypto Intelligence');
+  const [title, setTitle] = useState('');
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority, setFilterPriority] = useState<string>('ALL');
@@ -54,12 +58,12 @@ function App() {
     setTitle(TITLES[Math.floor(Math.random() * TITLES.length)]);
     setSubtitle(SUBTITLES[Math.floor(Math.random() * SUBTITLES.length)]);
     
-    const savedData = localStorage.getItem('osint_ledger_v9');
+    const savedData = localStorage.getItem('osint_ledger_v10');
     if (savedData) setCases(JSON.parse(savedData));
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('osint_ledger_v9', JSON.stringify(cases));
+    localStorage.setItem('osint_ledger_v10', JSON.stringify(cases));
   }, [cases]);
 
   const performAlphaHarvest = async (isFresh: boolean = false) => {
@@ -75,7 +79,10 @@ function App() {
       
       const [osintResult, saosResult] = await Promise.all([
         searchCryptoCases(activeSigs, discardedSigs),
-        fetchJudgments().catch(() => [])
+        fetchJudgments().catch((err) => {
+          console.warn("Backend unavailable, relying on OSINT fallback", err);
+          return [];
+        })
       ]);
 
       const mappedSaosCases: GroundedCase[] = saosResult.map((sj): GroundedCase => ({
@@ -103,7 +110,7 @@ function App() {
       setCases(prev => [...incoming, ...prev]);
       setStatus(`HARVEST COMPLETE. ${incoming.length} ENTRIES ADDED TO THE LEDGER.`);
     } catch (err: any) {
-      setError("Uplink timed out. Decentralized forensics are meeting resistance.");
+      setError("Uplink failed. Check if backend bridge is active or network is stable.");
     } finally {
       setIsScanning(false);
       setTimeout(() => setStatus(''), 5000);
@@ -148,6 +155,8 @@ function App() {
       });
   }, [cases, filterFolder, searchTerm, filterPriority]);
 
+  const titleParts = title ? title.split(' ') : ['Crypto', 'Intelligence'];
+
   return (
     <div className="min-h-screen bg-[#020617] text-slate-300 antialiased selection:bg-cyan-500 selection:text-black pb-20 print:bg-white print:text-black">
       <div className="scanline print:hidden"></div>
@@ -162,7 +171,7 @@ function App() {
                 ))}
              </div>
              <h2 className="text-7xl font-black text-white trm-heading uppercase leading-[0.85]">
-               {title.split(' ')[0]} <br/><span className="text-cyan-500">{title.split(' ').slice(1).join(' ')}</span>
+               {titleParts[0]} <br/><span className="text-cyan-500">{titleParts.slice(1).join(' ')}</span>
              </h2>
              <p className="text-slate-500 max-w-2xl font-medium italic">
                {subtitle}
@@ -242,7 +251,7 @@ function App() {
       </main>
 
       <footer className="fixed bottom-0 left-0 w-full bg-[#020617]/95 border-t border-slate-900/60 p-6 text-[10px] font-black text-slate-600 flex justify-between items-center px-12 uppercase tracking-widest z-50 print:hidden">
-        <div>Registry: <span className="text-slate-300">INTEL-OSINT v9.0</span></div>
+        <div>Registry: <span className="text-slate-300">INTEL-OSINT v10.0</span></div>
         <div className="flex items-center gap-3">
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_15px_cyan]"></span>
           System Online // Verified Data Stream
