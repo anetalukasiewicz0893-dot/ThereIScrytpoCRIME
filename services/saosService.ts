@@ -2,43 +2,34 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { CourtJudgment, AnalysisStatus, AIAnalysis, Priority } from '../types';
 
-/**
- * Calls our internal backend proxy to fetch historical records and analyzes each with Gemini.
- * This performs a deep forensic scan of raw court text.
- */
 export const fetchJudgments = async (query: string = 'waluta wirtualna kryptowaluta'): Promise<CourtJudgment[]> => {
   const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("Terminal Configuration Error: API_KEY missing.");
-  }
+  if (!apiKey) throw new Error("API Key missing. The AI has zero alpha.");
 
   const ai = new GoogleGenAI({ apiKey });
 
   try {
-    // 1. Fetch raw records from our internal Express proxy
     const response = await fetch(`http://localhost:3000/api/scan?q=${encodeURIComponent(query)}`);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Uplink Error: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Uplink Error: ${response.status}`);
 
     const data = await response.json();
     const rawItems = data.items || [];
 
-    // 2. Process and analyze each judgment using Gemini 3 Flash for efficiency
-    const analyzedItems = await Promise.all(rawItems.map(async (item: any) => {
+    // Massive increase: analyzing up to 100 cases per harvest for deep coverage
+    const analyzedItems = await Promise.all(rawItems.slice(0, 100).map(async (item: any) => {
       try {
-        const textToAnalyze = (item.textContent || '').substring(0, 8000);
+        const textToAnalyze = (item.textContent || '').substring(0, 15000);
         if (!textToAnalyze) return null;
 
         const genResponse = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
-          contents: `Analyze this Polish court judgment text. Determine if it involves a cryptocurrency-related crime (theft, fraud, AML, tax evasion).
-          Return JSON: { "isCryptoCrime": boolean, "summary": "1-sentence Polish summary", "amount": "PLN/BTC value or 'Unknown'", "article": "Statute/Article (e.g. Art. 299 KK)", "priority": "High/Medium/Low" }
+          contents: `As a professional CT (Crypto Twitter) forensic analyst with a witty, slightly cynical edge, dissect this Polish court judgment. 
+          Is this a "forced exit liquidity" event? (Theft, Fraud, Art 286 KK, Art 299 KK - money laundering).
           
-          JUDGMENT TEXT:
-          ${textToAnalyze}`,
+          JUDGMENT DATA:
+          ${textToAnalyze}
+          
+          Return JSON: { "isCryptoCrime": boolean, "summary": "1-sentence professional but sharp Polish summary", "amount": "kwota w PLN/BTC", "article": "Art. KK", "priority": "High/Medium/Low" }`,
           config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -56,8 +47,6 @@ export const fetchJudgments = async (query: string = 'waluta wirtualna kryptowal
         });
 
         const analysis = JSON.parse(genResponse.text || "{}") as AIAnalysis;
-
-        // We only proceed if it's confirmed as a crypto crime by the AI
         if (!analysis.isCryptoCrime) return null;
 
         return {
@@ -70,12 +59,10 @@ export const fetchJudgments = async (query: string = 'waluta wirtualna kryptowal
           status: AnalysisStatus.COMPLETED
         };
       } catch (err) {
-        console.error(`[INTEL] Analysis failed for ID ${item.id}:`, err);
         return null;
       }
     }));
 
-    // 3. Filter out nulls and non-crypto cases
     return analyzedItems.filter((item): item is CourtJudgment => item !== null);
   } catch (error) {
     console.error('Forensic Scan Failure:', error);

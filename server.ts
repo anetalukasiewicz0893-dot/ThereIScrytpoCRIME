@@ -14,11 +14,11 @@ const SAOS_API_BASE = 'https://www.saos.org.pl/api/judgments';
 app.get('/api/scan', async (req, res) => {
   const query = req.query.q || 'kryptowaluta waluta wirtualna';
   const allItems = [];
-  const maxPages = 3;
+  const maxPages = 10; // Increased from 3 to 10 for "massive" search
   const pageSize = 100;
 
   try {
-    console.log(`[INTEL] Initiating deep scan for: ${query}`);
+    console.log(`[SYS] Scanning the digital gutter for: ${query}. Hold your nose.`);
     
     for (let page = 0; page < maxPages; page++) {
       try {
@@ -32,9 +32,9 @@ app.get('/api/scan', async (req, res) => {
           },
           headers: {
             'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (OSINT-Terminal/2.4.0)'
+            'User-Agent': 'Mozilla/5.0 (Cynical-OSINT-Terminal/3.0.0)'
           },
-          timeout: 10000
+          timeout: 15000
         });
 
         if (response.data && response.data.items) {
@@ -44,26 +44,25 @@ app.get('/api/scan', async (req, res) => {
           break;
         }
       } catch (err: any) {
-        console.error(`[ERROR] Page ${page} fetch failed:`, err.message);
-        if (page === 0) throw err; // Only fail if the first page fails
+        console.error(`[FAIL] Page ${page} was too messy to handle:`, err.message);
+        if (page === 0) throw err;
         break;
       }
     }
 
-    // Clean and deduplicate data
     const uniqueItems = Array.from(new Map(allItems.map(item => [item.id, item])).values());
     
-    console.log(`[SUCCESS] Surfaced ${uniqueItems.length} records.`);
+    console.log(`[DONE] Dredged up ${uniqueItems.length} records. Filtering for actual intelligence now.`);
     res.json({ items: uniqueItems });
   } catch (error: any) {
-    console.error('[CRITICAL] SAOS Uplink Failure:', error.message);
+    console.error('[FATAL] SAOS Uplink flatlined:', error.message);
     res.status(500).json({ 
-      error: 'UPLINK_FAILURE', 
-      message: 'Failed to communicate with the National Judicial Database.' 
+      error: 'UPLINK_FLATLINED', 
+      message: 'The National Archive is currently ignoring our pings. Try again when they wake up.' 
     });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`[SYSTEM] Backend Terminal active on port ${PORT}`);
+  console.log(`[TERMINAL] Backend logic active on port ${PORT}. Surveillance mode: ON.`);
 });
