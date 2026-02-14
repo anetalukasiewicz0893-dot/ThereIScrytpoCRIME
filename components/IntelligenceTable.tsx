@@ -6,6 +6,7 @@ interface IntelligenceTableProps {
   data: GroundedCase[];
   onSave: (id: string) => void;
   onDiscard: (id: string) => void;
+  onDelete: (id: string) => void;
   onMove: (id: string, folder: string) => void;
   folders: string[];
 }
@@ -16,7 +17,7 @@ const parseAmount = (amountStr: string): number => {
   return match ? parseFloat(match[0]) : 0;
 };
 
-export const IntelligenceTable: React.FC<IntelligenceTableProps> = ({ data, onSave, onDiscard, onMove, folders }) => {
+export const IntelligenceTable: React.FC<IntelligenceTableProps> = ({ data, onSave, onDiscard, onDelete, onMove, folders }) => {
   if (data.length === 0) {
     return (
       <div className="bg-slate-900/10 border-2 border-dashed border-slate-800/40 rounded-[3rem] p-40 text-center">
@@ -50,22 +51,20 @@ export const IntelligenceTable: React.FC<IntelligenceTableProps> = ({ data, onSa
               return (
                 <tr 
                   key={item.id} 
-                  className={`group transition-all duration-300 ${isHighPriority ? 'bg-rose-950/20 border-l-4 border-l-rose-600' : 'hover:bg-cyan-500/5'}`}
+                  className={`group transition-all duration-300 ${isHighPriority ? 'bg-rose-950/10 border-l-4 border-l-rose-600' : 'hover:bg-cyan-500/5'}`}
                 >
                   <td className="px-10 py-10">
                     <div className="text-base font-black text-white group-hover:text-cyan-400 transition-colors print:text-black">{item.signature}</div>
                     <div className="text-[10px] text-slate-500 mt-2 font-bold uppercase tracking-widest">{item.court}</div>
                     <div className="mt-4 flex flex-wrap gap-2 print:hidden">
                       <span className="px-3 py-1 bg-slate-900 rounded-lg text-[8px] font-black text-slate-400 border border-slate-800 uppercase tracking-widest">{item.region}</span>
-                      <div className="relative inline-block group/folder">
-                        <select 
-                          value={item.folder || 'Uncategorized'}
-                          onChange={(e) => onMove(item.id, e.target.value)}
-                          className="appearance-none bg-cyan-500/10 hover:bg-cyan-500/20 rounded-lg text-[8px] font-black text-cyan-400 border border-cyan-500/20 px-3 py-1 uppercase tracking-widest outline-none cursor-pointer transition-all"
-                        >
-                          {folders.map(f => <option key={f} value={f} className="bg-slate-950 text-white">{f}</option>)}
-                        </select>
-                      </div>
+                      <select 
+                        value={item.folder || 'Uncategorized'}
+                        onChange={(e) => onMove(item.id, e.target.value)}
+                        className="appearance-none bg-cyan-500/10 hover:bg-cyan-500/20 rounded-lg text-[8px] font-black text-cyan-400 border border-cyan-500/20 px-3 py-1 uppercase tracking-widest outline-none cursor-pointer transition-all"
+                      >
+                        {folders.map(f => <option key={f} value={f} className="bg-slate-950 text-white">{f}</option>)}
+                      </select>
                     </div>
                   </td>
                   <td className="px-6 py-10">
@@ -94,7 +93,10 @@ export const IntelligenceTable: React.FC<IntelligenceTableProps> = ({ data, onSa
                       >
                         {item.isSaved ? 'Archived' : 'Pin Entry'}
                       </button>
-                      <button onClick={() => onDiscard(item.id)} className="text-[8px] font-black uppercase text-slate-700 hover:text-rose-500 text-left px-2 transition-colors">Discard</button>
+                      <div className="flex justify-between px-2">
+                        <button onClick={() => onDiscard(item.id)} className="text-[8px] font-black uppercase text-slate-700 hover:text-amber-500 transition-colors">Discard</button>
+                        <button onClick={() => onDelete(item.id)} className="text-[8px] font-black uppercase text-slate-700 hover:text-rose-500 transition-colors">Delete</button>
+                      </div>
                     </div>
                   </td>
                 </tr>

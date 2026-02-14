@@ -14,14 +14,11 @@ import { fetchJudgments } from './services/saosService';
 import { GroundedCase, Priority } from './types';
 
 const INITIAL_FOLDERS = ["Uncategorized", "Exit Liquidity", "Meme Rugs", "Laundered Alpha"];
+const STORAGE_KEY = 'osint_ledger_v12_final';
 
 const TITLES = [
-  "Crypto Intelligence",
-  "Digital Forensics",
-  "Ledger Oversight",
-  "Blockchain Audit",
-  "Asset Recovery",
-  "On-Chain Intel"
+  "Crypto Intelligence", "Digital Forensics", "Ledger Oversight", 
+  "Blockchain Audit", "Asset Recovery", "On-Chain Intel"
 ];
 
 const SUBTITLES = [
@@ -43,20 +40,23 @@ function App() {
   const [subtitle, setSubtitle] = useState('');
   const [title, setTitle] = useState('');
   const [logs, setLogs] = useState<any[]>([]);
-  
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority] = useState<string>('ALL');
   const [filterFolder] = useState<string>('ALL');
 
+  // LOAD DATA ON MOUNT
   useEffect(() => {
-    console.log("OSINT Terminal Initializing...");
     setTitle(TITLES[Math.floor(Math.random() * TITLES.length)]);
     setSubtitle(SUBTITLES[Math.floor(Math.random() * SUBTITLES.length)]);
     
-    const savedData = localStorage.getItem('osint_ledger_v12');
+    const savedData = localStorage.getItem(STORAGE_KEY);
     if (savedData) {
       try {
-        setCases(JSON.parse(savedData));
+        const parsed = JSON.parse(savedData);
+        if (Array.isArray(parsed)) {
+          setCases(parsed);
+          addLog(`Restored ${parsed.length} records from local archive.`, "INFO");
+        }
       } catch (e) {
         console.error("Failed to parse saved ledger data");
       }
@@ -66,13 +66,12 @@ function App() {
     if (savedView) setView(savedView as ViewType);
   }, []);
 
+  // SAVE DATA ON CHANGE
   useEffect(() => {
-    localStorage.setItem('osint_ledger_v12', JSON.stringify(cases));
+    if (cases.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cases));
+    }
   }, [cases]);
-
-  useEffect(() => {
-    localStorage.setItem('osint_view_pref', view);
-  }, [view]);
 
   const addLog = (message: string, level: 'INFO' | 'WARN' | 'CRIT' | 'SIGNAL' = 'INFO') => {
     setLogs(prev => [...prev.slice(-49), {
@@ -82,47 +81,47 @@ function App() {
     }]);
   };
 
+  const clearDatabase = () => {
+    if (confirm("CRITICAL: This will permanently wipe all stored intelligence. Proceed?")) {
+      localStorage.removeItem(STORAGE_KEY);
+      setCases([]);
+      addLog("Manual database purge complete. Terminal reset.", "WARN");
+    }
+  };
+
   const performAlphaHarvest = async () => {
-    // Check for API_KEY presence in a way that handles browser environments
-    const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : (window as any).API_KEY;
+    const env = typeof process !== 'undefined' ? process.env : (window as any);
+    const apiKey = env.API_KEY || (window as any).API_KEY;
 
     if (!apiKey) {
-      const msg = "CRITICAL ERROR: Google Gemini API_KEY is missing. Check your environment configuration.";
-      setError(msg);
+      setError("CRITICAL ERROR: Google Gemini API_KEY is missing. Please configure secrets.");
       addLog("UPLINK FAILURE: Missing API Credentials", "CRIT");
       return;
     }
 
     setIsScanning(true);
     setError(null);
-    setStatus('INITIATING MULTI-VECTOR SIGNAL HARVEST...');
-    addLog("Handshaking with Gemini-3 OSINT Node...", "INFO");
-    addLog("Requesting Google Search Grounding for judicial archives...", "INFO");
+    setStatus('FILTERING REPEAT SIGNALS & HARVESTING NEW NODES...');
+    
+    const activeSigs = cases.filter(c => !c.isDiscarded).map(c => c.signature);
+    const discardedSigs = cases.filter(c => c.isDiscarded).map(c => c.signature);
+    const allKnownSigs = [...activeSigs, ...discardedSigs];
+
+    addLog(`Excluding ${allKnownSigs.length} known signatures from harvest.`, "INFO");
 
     try {
-      const activeSigs = cases.filter(c => !c.isDiscarded).map(c => c.signature);
-      const discardedSigs = cases.filter(c => c.isDiscarded).map(c => c.signature);
-      
-      addLog("Scanning Polish SAOS database for keyword 'kryptowaluty'...", "SIGNAL");
-      
       const [osintResult, saosResult] = await Promise.all([
         searchCryptoCases(activeSigs, discardedSigs),
-        fetchJudgments().catch((e) => {
-          addLog("SAOS Pipeline Timeout. Falling back to primary OSINT.", "WARN");
-          return [];
-        })
+        fetchJudgments(allKnownSigs).catch(() => [])
       ]);
 
-      addLog(`Harvested ${osintResult.cases.length} signals from OSINT vector.`, "SIGNAL");
-      addLog(`Harvested ${saosResult.length} signals from SAOS vector.`, "SIGNAL");
-
       const mappedSaosCases: GroundedCase[] = saosResult.map((sj): GroundedCase => ({
-        id: `saos-${sj.id}`,
+        id: `saos-${sj.id}-${Date.now()}`,
         signature: sj.courtCases[0] || `SAOS-${sj.id}`,
         court: sj.courtType,
         date: sj.judgmentDate,
         isCryptoCrime: true,
-        summary: sj.analysis?.summary || 'Automated classification pending.',
+        summary: sj.analysis?.summary || 'Classification pending.',
         amount: sj.analysis?.amount || 'N/A',
         article: sj.analysis?.article || 'Unknown',
         priority: (sj.analysis?.priority as Priority) || Priority.LOW,
@@ -131,16 +130,25 @@ function App() {
         folder: 'Uncategorized',
         isSaved: false,
         isDiscarded: false,
-        location: { lat: 52.2297 + (Math.random() - 0.5) * 5, lng: 21.0122 + (Math.random() - 0.5) * 5, city: 'SAOS Node' }
+        location: { 
+          lat: 52.2297 + (Math.random() - 0.5) * 5, 
+          lng: 21.0122 + (Math.random() - 0.5) * 5, 
+          city: 'SAOS Node' 
+        }
       }));
 
       const incoming = [...osintResult.cases, ...mappedSaosCases].filter(nc => 
-        !activeSigs.includes(nc.signature) && !discardedSigs.includes(nc.signature)
+        !allKnownSigs.includes(nc.signature)
       );
 
-      setCases(prev => [...incoming, ...prev]);
-      setStatus(`UPLINK SYNCED. ${incoming.length} NEW NODES FOUND.`);
-      addLog(`Integration complete. Registry updated with ${incoming.length} new records.`, "INFO");
+      if (incoming.length === 0) {
+        setStatus('HARVEST COMPLETE. NO NEW SIGNALS FOUND.');
+        addLog("Scan complete. No unique signatures detected in current broadcast.", "INFO");
+      } else {
+        setCases(prev => [...incoming, ...prev]);
+        setStatus(`UPLINK SYNCED. ${incoming.length} NEW NODES FOUND.`);
+        addLog(`Integration complete. Added ${incoming.length} new records.`, "SIGNAL");
+      }
     } catch (err: any) {
       setError(`UPLINK FAILURE: ${err.message || 'Check API Configuration'}`);
       addLog(`Pipeline crash: ${err.message}`, "CRIT");
@@ -150,21 +158,22 @@ function App() {
     }
   };
 
-  const handleAction = (id: string, action: 'SAVE' | 'DISCARD' | 'MOVE', value?: string) => {
+  const handleAction = (id: string, action: 'SAVE' | 'DISCARD' | 'MOVE' | 'DELETE', value?: string) => {
+    if (action === 'DELETE') {
+      setCases(prev => {
+        const updated = prev.filter(c => c.id !== id);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        return updated;
+      });
+      addLog("Node purged from database.", "WARN");
+      return;
+    }
+
     setCases(prev => prev.map(c => {
       if (c.id !== id) return c;
-      if (action === 'SAVE') {
-        addLog(`Vault state changed for signature: ${c.signature}`, "INFO");
-        return { ...c, isSaved: !c.isSaved };
-      }
-      if (action === 'DISCARD') {
-        addLog(`Discarding signal: ${c.signature}`, "WARN");
-        return { ...c, isDiscarded: true };
-      }
-      if (action === 'MOVE') {
-        addLog(`Relocating ${c.signature} to folder: ${value}`, "INFO");
-        return { ...c, folder: value };
-      }
+      if (action === 'SAVE') return { ...c, isSaved: !c.isSaved };
+      if (action === 'DISCARD') return { ...c, isDiscarded: true };
+      if (action === 'MOVE') return { ...c, folder: value };
       return c;
     }));
   };
@@ -199,17 +208,17 @@ function App() {
           </div>
           <div className="flex gap-4">
              <button 
-               onClick={() => performAlphaHarvest()}
+               onClick={performAlphaHarvest}
                disabled={isScanning}
                className={`px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isScanning ? 'bg-slate-900 text-slate-700 cursor-not-allowed animate-pulse' : 'bg-cyan-600 text-white hover:bg-cyan-500 shadow-[0_0_20px_rgba(8,145,178,0.3)]'}`}
              >
                {isScanning ? 'Syncing...' : 'Live Harvest'}
              </button>
              <button 
-               onClick={() => setView(view === 'TERMINAL' ? 'MAP' : 'TERMINAL')}
-               className="px-8 py-3 bg-slate-900 border border-slate-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all"
+               onClick={clearDatabase}
+               className="px-6 py-3 bg-rose-950/20 border border-rose-900/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-rose-500 hover:bg-rose-900/30 transition-all"
              >
-               {view === 'TERMINAL' ? 'Tactical Map' : 'Terminal UI'}
+               Purge Database
              </button>
           </div>
         </div>
@@ -236,17 +245,11 @@ function App() {
                   <svg className="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   <h4 className="text-sm font-black text-rose-500 uppercase tracking-widest">Protocol Error</h4>
                 </div>
-                <p className="text-xs text-rose-400 font-bold uppercase tracking-widest leading-relaxed">
-                  {error}
-                </p>
+                <p className="text-xs text-rose-400 font-bold uppercase tracking-widest leading-relaxed">{error}</p>
               </div>
             )}
 
-            {status && (
-              <div className="text-[10px] font-mono text-cyan-500 animate-pulse tracking-widest uppercase py-2">
-                >> {status}
-              </div>
-            )}
+            {status && <div className="text-[10px] font-mono text-cyan-500 animate-pulse tracking-widest uppercase py-2">>> {status}</div>}
 
             <div className="space-y-12 min-h-[400px]">
               {view === 'TERMINAL' && (
@@ -254,18 +257,13 @@ function App() {
                   data={filteredCases} 
                   onSave={(id) => handleAction(id, 'SAVE')}
                   onDiscard={(id) => handleAction(id, 'DISCARD')}
+                  onDelete={(id) => handleAction(id, 'DELETE')}
                   onMove={(id, folder) => handleAction(id, 'MOVE', folder)}
                   folders={folders}
                 />
               )}
               {view === 'MAP' && <TacticalMap cases={filteredCases} />}
-              {view === 'FOLDERS' && (
-                <FolderView 
-                  cases={cases} 
-                  folders={folders} 
-                  onAction={handleAction} 
-                />
-              )}
+              {view === 'FOLDERS' && <FolderView cases={cases} folders={folders} onAction={handleAction} />}
               {view === 'QUOTES' && <CryptoQuotes />}
               {view === 'MANIFESTO' && <Manifesto />}
               {view === 'README' && <Readme />}
@@ -274,32 +272,15 @@ function App() {
 
           <div className="lg:col-span-1 space-y-8">
             <TerminalLog logs={logs} />
-            <div className="bg-slate-900/30 border border-slate-800/60 p-6 rounded-2xl space-y-4">
-              <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Node Status</h4>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center text-[10px] font-mono">
-                  <span className="text-slate-600">ENCRYPTION</span>
-                  <span className="text-emerald-500">AES-256 ACTIVE</span>
-                </div>
-                <div className="flex justify-between items-center text-[10px] font-mono">
-                  <span className="text-slate-600">UPLINK</span>
-                  <span className="text-cyan-500">10.4 GBPS</span>
-                </div>
-                <div className="flex justify-between items-center text-[10px] font-mono">
-                  <span className="text-slate-600">ACTIVE TASKS</span>
-                  <span className="text-slate-400">{isScanning ? '1' : '0'}</span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </main>
 
       <footer className="fixed bottom-0 left-0 w-full bg-[#020617]/95 border-t border-slate-900/60 p-4 text-[9px] font-black text-slate-600 flex justify-between items-center px-12 uppercase tracking-widest z-50 print:hidden backdrop-blur-md">
-        <div>Registry: OSINT-INTEL v12.0.1</div>
+        <div>Registry: OSINT-INTEL v12.1.0 // Persistent Storage Active</div>
         <div className="flex items-center gap-3">
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_10px_cyan]"></span>
-          Tactical Link Established // View: {view}
+          Tactical Link Established
         </div>
       </footer>
     </div>

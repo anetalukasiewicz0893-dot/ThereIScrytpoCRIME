@@ -5,20 +5,25 @@ import { CourtJudgment, AnalysisStatus, AIAnalysis, Priority } from '../types';
 
 /**
  * Fetches and analyzes real Polish court judgments using Gemini with Google Search grounding.
- * This bypasses local API endpoints and provides live forensic data.
+ * Prevents duplicates by using an exclusion list.
  */
-export const fetchJudgments = async (query: string = 'wyroki sądowe kryptowaluty Polska'): Promise<CourtJudgment[]> => {
+export const fetchJudgments = async (
+  excludeSignatures: string[] = [],
+  query: string = 'wyroki sądowe kryptowaluty Polska'
+): Promise<CourtJudgment[]> => {
   const ai = getAI();
+  const excludeStr = excludeSignatures.slice(0, 40).join(', ');
   
   try {
     const response = await ai.models.generateContent({
       model: PRO_MODEL,
       contents: `Search for real, specific Polish court judgments (wyroki sądowe) related to cryptocurrency, bitcoin, or virtual assets. 
-        Return a JSON object containing an array of 'judgments'.
+        CRITICAL: Do NOT include any of the following case signatures: [${excludeStr}].
+        Return a JSON object containing an array of 'judgments' that are NEW and NOT in the exclusion list.
         Each judgment must have: id (unique number), caseNumber (signature), date, courtType, summary (1-sentence Polish), amount (PLN/BTC), article (Penal code), and priority (High/Medium/Low).`,
       config: {
         tools: [{ googleSearch: {} }],
-        systemInstruction: 'You are a legal OSINT expert. Find real Polish court cases. Output valid JSON only.',
+        systemInstruction: 'You are a legal OSINT expert. Find real Polish court cases. Output valid JSON only. Do not repeat cases the user already has.',
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -49,7 +54,6 @@ export const fetchJudgments = async (query: string = 'wyroki sądowe kryptowalut
     const content = response.text;
     const parsedData = content ? JSON.parse(content) : { judgments: [] };
 
-    // Extract grounding URLs to satisfy citation requirements
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
     const sourceUris = groundingChunks
       .filter(chunk => chunk.web && chunk.web.uri)
@@ -69,7 +73,6 @@ export const fetchJudgments = async (query: string = 'wyroki sądowe kryptowalut
         article: j.article,
         priority: j.priority as Priority
       },
-      // If we found search results, use the first one as a source link for this judgment
       sourceUrl: sourceUris[index % sourceUris.length] || "https://www.saos.org.pl/"
     }));
 
