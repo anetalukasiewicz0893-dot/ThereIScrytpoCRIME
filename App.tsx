@@ -49,11 +49,18 @@ function App() {
   const [filterFolder] = useState<string>('ALL');
 
   useEffect(() => {
+    console.log("OSINT Terminal Initializing...");
     setTitle(TITLES[Math.floor(Math.random() * TITLES.length)]);
     setSubtitle(SUBTITLES[Math.floor(Math.random() * SUBTITLES.length)]);
     
     const savedData = localStorage.getItem('osint_ledger_v12');
-    if (savedData) setCases(JSON.parse(savedData));
+    if (savedData) {
+      try {
+        setCases(JSON.parse(savedData));
+      } catch (e) {
+        console.error("Failed to parse saved ledger data");
+      }
+    }
 
     const savedView = localStorage.getItem('osint_view_pref');
     if (savedView) setView(savedView as ViewType);
@@ -76,9 +83,13 @@ function App() {
   };
 
   const performAlphaHarvest = async () => {
-    const hasKey = !!process.env.API_KEY;
+    // SAFE ENV CHECK: Browser friendly
+    const env = typeof process !== 'undefined' ? process.env : (window as any);
+    const hasKey = !!(env.API_KEY || (window as any).API_KEY);
+
     if (!hasKey) {
-      setError("CRITICAL ERROR: API_KEY is missing from environment secrets.");
+      const msg = "CRITICAL ERROR: API_KEY is missing from environment secrets.";
+      setError(msg);
       addLog("UPLINK FAILURE: Missing API Key", "CRIT");
       return;
     }
@@ -234,11 +245,7 @@ function App() {
 
             {status && (
               <div className="text-[10px] font-mono text-cyan-500 animate-pulse tracking-widest uppercase py-2">
-                >> {{status && (  
-  <div className="text-[10px] font-mono text-cyan-500 animate-pulse tracking-widest uppercase py-2">   
-  </div>  
-)}  
-}
+                >> {status}
               </div>
             )}
 

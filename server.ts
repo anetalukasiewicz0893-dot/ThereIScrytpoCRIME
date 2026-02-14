@@ -39,15 +39,17 @@ app.get('/api/scan', async (req, res) => {
   }
 });
 
-// Serve static files from the current directory
-// In a production environment, you might serve a 'dist' folder
+// Serve static files - use path.join for cross-platform robustness
 app.use(express.static(__dirname));
 
-// Fallback to index.html for SPA routing
+// Fallback to index.html for React SPA routing
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(port, () => {
-  console.log(`OSINT Terminal active at http://localhost:${port}`);
+  console.log('=========================================');
+  console.log(`OSINT TERMINAL LIVE AT PORT: ${port}`);
+  console.log(`API_KEY STATUS: ${process.env.API_KEY ? 'CONFIGURED' : 'MISSING'}`);
+  console.log('=========================================');
 });
