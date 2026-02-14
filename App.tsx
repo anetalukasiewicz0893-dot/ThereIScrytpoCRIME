@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { TerminalHeader } from './components/TerminalHeader';
 import { StatCards } from './components/StatCards';
@@ -14,7 +13,7 @@ import { fetchJudgments } from './services/saosService';
 import { GroundedCase, Priority } from './types';
 
 const INITIAL_FOLDERS = ["Uncategorized", "Exit Liquidity", "Meme Rugs", "Laundered Alpha"];
-const STORAGE_KEY = 'osint_ledger_v12_final';
+const STORAGE_KEY = 'osint_ledger_v12_final_v2'; // Bumped version to ensure clean slate if needed
 
 const TITLES = [
   "Crypto Intelligence", "Digital Forensics", "Ledger Oversight", 
@@ -55,10 +54,10 @@ function App() {
         const parsed = JSON.parse(savedData);
         if (Array.isArray(parsed)) {
           setCases(parsed);
-          addLog(`Restored ${parsed.length} records from local archive.`, "INFO");
+          addLog(`Restored ${parsed.length} intelligence nodes from local archive.`, "INFO");
         }
       } catch (e) {
-        console.error("Failed to parse saved ledger data");
+        console.error("Failed to restore ledger data:", e);
       }
     }
 
@@ -68,10 +67,13 @@ function App() {
 
   // SAVE DATA ON CHANGE
   useEffect(() => {
-    if (cases.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cases));
-    }
+    // Save even if empty (e.g. after deletion)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cases));
   }, [cases]);
+
+  useEffect(() => {
+    localStorage.setItem('osint_view_pref', view);
+  }, [view]);
 
   const addLog = (message: string, level: 'INFO' | 'WARN' | 'CRIT' | 'SIGNAL' = 'INFO') => {
     setLogs(prev => [...prev.slice(-49), {
@@ -82,32 +84,33 @@ function App() {
   };
 
   const clearDatabase = () => {
-    if (confirm("CRITICAL: This will permanently wipe all stored intelligence. Proceed?")) {
+    if (confirm("PROTOCOL ALERT: Permanent deletion of all signal intelligence. Confirm purge?")) {
       localStorage.removeItem(STORAGE_KEY);
       setCases([]);
-      addLog("Manual database purge complete. Terminal reset.", "WARN");
+      addLog("Manual database purge complete. Operating on clean slate.", "WARN");
     }
   };
 
   const performAlphaHarvest = async () => {
-    const env = typeof process !== 'undefined' ? process.env : (window as any);
-    const apiKey = env.API_KEY || (window as any).API_KEY;
+    // Check for API_KEY availability
+    const apiKeyAvailable = (typeof process !== 'undefined' && process.env?.API_KEY) || (window as any).API_KEY;
 
-    if (!apiKey) {
-      setError("CRITICAL ERROR: Google Gemini API_KEY is missing. Please configure secrets.");
-      addLog("UPLINK FAILURE: Missing API Credentials", "CRIT");
+    if (!apiKeyAvailable) {
+      setError("UPLINK FAILURE: Missing Gemini API Key. Verify environment secrets.");
+      addLog("CRITICAL: Signal uplink failed (Missing Credentials)", "CRIT");
       return;
     }
 
     setIsScanning(true);
     setError(null);
-    setStatus('FILTERING REPEAT SIGNALS & HARVESTING NEW NODES...');
+    setStatus('FILTERING REPEAT SIGNALS & DISCOVERY OF NEW NODES...');
     
+    // Identify all existing signatures to prevent duplicates
     const activeSigs = cases.filter(c => !c.isDiscarded).map(c => c.signature);
     const discardedSigs = cases.filter(c => c.isDiscarded).map(c => c.signature);
-    const allKnownSigs = [...activeSigs, ...discardedSigs];
+    const allKnownSigs = Array.from(new Set([...activeSigs, ...discardedSigs]));
 
-    addLog(`Excluding ${allKnownSigs.length} known signatures from harvest.`, "INFO");
+    addLog(`Excluding ${allKnownSigs.length} indexed signatures from scan.`, "INFO");
 
     try {
       const [osintResult, saosResult] = await Promise.all([
@@ -137,20 +140,21 @@ function App() {
         }
       }));
 
+      // Final filtration of duplicates just in case
       const incoming = [...osintResult.cases, ...mappedSaosCases].filter(nc => 
         !allKnownSigs.includes(nc.signature)
       );
 
       if (incoming.length === 0) {
-        setStatus('HARVEST COMPLETE. NO NEW SIGNALS FOUND.');
-        addLog("Scan complete. No unique signatures detected in current broadcast.", "INFO");
+        setStatus('HARVEST COMPLETE. SYSTEM SYNCHRONIZED.');
+        addLog("No new unique signatures detected in current broadcast.", "INFO");
       } else {
         setCases(prev => [...incoming, ...prev]);
-        setStatus(`UPLINK SYNCED. ${incoming.length} NEW NODES FOUND.`);
+        setStatus(`UPLINK SYNCED. ${incoming.length} UNIQUE NODES FOUND.`);
         addLog(`Integration complete. Added ${incoming.length} new records.`, "SIGNAL");
       }
     } catch (err: any) {
-      setError(`UPLINK FAILURE: ${err.message || 'Check API Configuration'}`);
+      setError(`UPLINK FAILURE: ${err.message || 'Check Connection'}`);
       addLog(`Pipeline crash: ${err.message}`, "CRIT");
     } finally {
       setIsScanning(false);
@@ -160,11 +164,7 @@ function App() {
 
   const handleAction = (id: string, action: 'SAVE' | 'DISCARD' | 'MOVE' | 'DELETE', value?: string) => {
     if (action === 'DELETE') {
-      setCases(prev => {
-        const updated = prev.filter(c => c.id !== id);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        return updated;
-      });
+      setCases(prev => prev.filter(c => c.id !== id));
       addLog("Node purged from database.", "WARN");
       return;
     }
@@ -277,7 +277,7 @@ function App() {
       </main>
 
       <footer className="fixed bottom-0 left-0 w-full bg-[#020617]/95 border-t border-slate-900/60 p-4 text-[9px] font-black text-slate-600 flex justify-between items-center px-12 uppercase tracking-widest z-50 print:hidden backdrop-blur-md">
-        <div>Registry: OSINT-INTEL v12.1.0 // Persistent Storage Active</div>
+        <div>Registry: OSINT-INTEL v12.1.2 // PERSISTENT STORAGE ACTIVE</div>
         <div className="flex items-center gap-3">
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_10px_cyan]"></span>
           Tactical Link Established

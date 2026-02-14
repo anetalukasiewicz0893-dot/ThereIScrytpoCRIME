@@ -1,16 +1,34 @@
-
 import { GoogleGenAI } from "@google/genai";
 
 /**
+ * Safely retrieves the API key from the environment.
+ * Browsers do not have a global 'process' object, so we check existence first.
+ */
+const getSafeApiKey = (): string => {
+  try {
+    // Check if process is defined (Node.js/Zeabur environment)
+    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+      return process.env.API_KEY;
+    }
+    // Fallback for browser-injected keys
+    if (typeof window !== 'undefined' && (window as any).API_KEY) {
+      return (window as any).API_KEY;
+    }
+  } catch (e) {
+    console.warn("Environment check failed:", e);
+  }
+  return '';
+};
+
+/**
  * Shared Google Gemini AI client instance.
- * Ensures compatibility with browser environments where process.env might be missing.
  */
 export const getAI = () => {
-  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : (window as any).API_KEY;
+  const apiKey = getSafeApiKey();
   if (!apiKey) {
-    console.warn("OSINT Warning: API_KEY is undefined. Signal uplink will fail.");
+    console.error("CRITICAL ERROR: API_KEY is missing. Check deployment environment variables.");
   }
-  return new GoogleGenAI({ apiKey: apiKey || '' });
+  return new GoogleGenAI({ apiKey: apiKey });
 };
 
 export const FLASH_MODEL = "gemini-3-flash-preview";

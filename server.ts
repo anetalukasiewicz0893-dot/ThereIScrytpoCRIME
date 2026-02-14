@@ -1,4 +1,3 @@
-
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -40,9 +39,17 @@ app.get('/api/scan', async (req, res) => {
 });
 
 // Serve static files from the root directory
-app.use(express.static(__dirname));
+// Explicitly setting cache-control to prevent stale files in browser
+app.use(express.static(__dirname, {
+    maxAge: '1h',
+    setHeaders: (res, path) => {
+        if (path.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache');
+        }
+    }
+}));
 
-// Fallback to index.html for SPA support
+// Fallback to index.html for SPA support - CRITICAL for React routing on refresh
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -50,6 +57,6 @@ app.get('*', (req, res) => {
 app.listen(port, () => {
   console.log('=========================================');
   console.log(`OSINT TERMINAL LIVE AT PORT: ${port}`);
-  console.log(`GEMINI API_KEY: ${process.env.API_KEY ? 'CONFIGURED' : 'MISSING'}`);
+  console.log(`API_KEY STATUS: ${process.env.API_KEY ? 'CONFIGURED' : 'MISSING'}`);
   console.log('=========================================');
 });
